@@ -4,6 +4,14 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titel %}Haushaltsbuch{% endblock %}</title>
+  <!-- iPhone: „Zum Home-Bildschirm hinzufügen“ ergibt eine App mit Icon und Vollbild -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Haushaltsbuch">
+  <meta name="theme-color" content="#2a78d6">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon.png') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>

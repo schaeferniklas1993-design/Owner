@@ -88,6 +88,21 @@ Beträge können deutsch (`1.234,56`) oder mit Punkt (`1234.56`) eingegeben werd
 - Für lange Haltbarkeit: regelmäßig `python3 cli.py sicherung` ausführen –
   die Kopien landen datiert im Ordner `sicherungen/`.
 
+## Nutzung am iPhone
+
+Die App läuft nicht auf dem iPhone selbst, sondern auf einem Rechner zu Hause –
+das iPhone bedient sie über Safari (beide Handys teilen sich so dieselbe Datenbank):
+
+1. App auf einem dauerhaft laufenden Rechner starten (PC, Mini-PC, Raspberry Pi, NAS):
+   `python3 app.py`
+2. IP-Adresse des Rechners im Heimnetz herausfinden (z. B. `192.168.1.20`).
+3. Am iPhone in Safari öffnen: `http://192.168.1.20:5000` und anmelden.
+4. In Safari **Teilen → „Zum Home-Bildschirm“** wählen – das Haushaltsbuch
+   erscheint dann mit eigenem Icon wie eine normale App und startet im Vollbild.
+5. Für Zugriff außerhalb des WLANs: **Tailscale** (kostenlos) auf dem Rechner und
+   beiden iPhones installieren – danach funktioniert die App von überall über die
+   Tailscale-Adresse des Rechners, ohne Portfreigabe im Router.
+
 ## Fernzugriff (beide von unterwegs)
 
 `app.py` lauscht auf allen Netzwerk-Schnittstellen (`0.0.0.0`, Port 5000).
