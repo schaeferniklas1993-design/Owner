@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block titel %}Anmelden – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="login-buehne">
+  <form class="login-karte" method="post">
+    <div class="login-logo">💶</div>
+    <h1>Haushaltsbuch</h1>
+    <p class="login-untertitel">Gemeinsame Ein- und Ausgaben, ein Konto pro Person.</p>
+    {% if fehler %}<div class="meldung meldung-fehler">{{ fehler }}</div>{% endif %}
+    <label>Benutzername
+      <input name="benutzername" autocomplete="username" autofocus required
+             placeholder="niklas oder partnerin">
+    </label>
+    <label>Passwort
+      <input type="password" name="passwort" autocomplete="current-password" required>
+    </label>
+    <button type="submit">Anmelden</button>
+  </form>
+</div>
+{% endblock %}

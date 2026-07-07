@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block titel %}Buchungen – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <h1>Buchungen</h1>
+  <div class="monatswahl">
+    <a class="monat-pfeil" href="{{ url_for('buchungen', monat=vormonat, person=person_filter) }}" aria-label="Vormonat">‹</a>
+    <span class="monat-titel">{{ monat_titel }}</span>
+    <a class="monat-pfeil" href="{{ url_for('buchungen', monat=naechster_monat, person=person_filter) }}" aria-label="Nächster Monat">›</a>
+  </div>
+</div>
+
+<section class="karte">
+  <h2>Neue Buchung <span class="karten-hinweis">(wird für {{ g.benutzer.anzeigename }} erfasst)</span></h2>
+  <form class="buchung-formular" method="post" action="{{ url_for('buchungen', monat=monat_key) }}">
+    <label>Art
+      <select name="art" id="art-auswahl">
+        <option value="ausgabe">Ausgabe</option>
+        <option value="einnahme">Einnahme</option>
+      </select>
+    </label>
+    <label>Betrag (€)
+      <input name="betrag" required inputmode="decimal" placeholder="z. B. 54,30">
+    </label>
+    <label>Kategorie
+      <select name="kategorie_id" id="kategorie-auswahl">
+        {% for k in kategorien %}
+        <option value="{{ k.id }}" data-art="{{ k.art }}">{{ k.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Datum
+      <input type="date" name="datum" value="{{ heute }}" required>
+    </label>
+    <label class="breit">Beschreibung
+      <input name="beschreibung" placeholder="optional">
+    </label>
+    <button type="submit">Buchen</button>
+  </form>
+</section>
+
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>{{ buchungen|length }} Buchung{{ 'en' if buchungen|length != 1 }} – {{ monat_titel }}</h2>
+    <div class="filter-reihe">
+      <a class="filter-chip {{ 'aktiv' if person_filter == 'alle' }}"
+         href="{{ url_for('buchungen', monat=monat_key, person='alle') }}">Alle</a>
+      {% for u in alle_benutzer %}
+      <a class="filter-chip {{ 'aktiv' if person_filter == u.benutzername }}"
+         href="{{ url_for('buchungen', monat=monat_key, person=u.benutzername) }}">{{ u.anzeigename }}</a>
+      {% endfor %}
+    </div>
+  </div>
+  {% if buchungen %}
+  <table class="tabelle">
+    <thead><tr><th>Datum</th><th>Person</th><th>Kategorie</th><th>Beschreibung</th><th class="rechts">Betrag</th><th></th></tr></thead>
+    <tbody>
+      {% for b in buchungen %}
+      <tr>
+        <td>{{ b.datum }}</td>
+        <td>{{ b.person }}</td>
+        <td>{{ b.kategorie }}{% if b.dauerauftrag_id %} <span class="badge">Dauerauftrag</span>{% endif %}</td>
+        <td>{{ b.beschreibung or "–" }}</td>
+        <td class="rechts {{ 'plus' if b.art == 'einnahme' else 'minus' }}">
+          {{ '+' if b.art == 'einnahme' else '−' }}{{ b.betrag_cent|euro }}
+        </td>
+        <td class="rechts">
+          <form method="post" action="{{ url_for('buchung_loeschen', buchung_id=b.id) }}"
+                onsubmit="return confirm('Diese Buchung wirklich löschen?')">
+            <button class="knopf-loeschen" title="Buchung löschen">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">Keine Buchungen für diese Auswahl.</p>
+  {% endif %}
+</section>
+
+<script>
+  // Kategorienliste an die gewählte Art (Einnahme/Ausgabe) koppeln.
+  const artAuswahl = document.getElementById("art-auswahl");
+  const kategorieAuswahl = document.getElementById("kategorie-auswahl");
+  function kategorienFiltern() {
+    let erste = null;
+    for (const option of kategorieAuswahl.options) {
+      const passt = option.dataset.art === artAuswahl.value;
+      option.hidden = !passt;
+      option.disabled = !passt;
+      if (passt && erste === null) erste = option;
+    }
+    if (kategorieAuswahl.selectedOptions[0]?.disabled && erste) erste.selected = true;
+  }
+  artAuswahl.addEventListener("change", kategorienFiltern);
+  kategorienFiltern();
+</script>
+{% endblock %}

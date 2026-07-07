@@ -1,0 +1,9 @@
+# Lokale Datenbank und Geheimnisse – niemals ins Repository
+haushalt.db
+haushalt.db-*
+.secret_key
+sicherungen/
+
+__pycache__/
+*.pyc
+.venv/

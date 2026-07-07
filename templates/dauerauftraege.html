@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block titel %}Daueraufträge – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf"><h1>Daueraufträge</h1></div>
+
+<p class="seiten-hinweis">
+  Daueraufträge werden automatisch jeden Monat am eingestellten Tag gebucht –
+  zum Beispiel das Gehalt von Niklas am 15. und das der Partnerin am 1.
+  Ein Gehalt mit Betrag 0,00 € ist noch nicht eingerichtet: Betrag eintragen und speichern, dann läuft es.
+</p>
+
+<section class="karte">
+  <h2>Eingerichtete Daueraufträge</h2>
+  {% if dauerauftraege %}
+  <table class="tabelle">
+    <thead><tr><th>Person</th><th>Tag</th><th>Kategorie</th><th>Beschreibung</th><th class="rechts">Betrag</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for d in dauerauftraege %}
+      <tr>
+        <td>{{ d.person }}</td>
+        <td>{{ d.monatstag }}.</td>
+        <td>{{ d.kategorie }}</td>
+        <td>{{ d.beschreibung }}</td>
+        <td class="rechts">
+          <form class="inline-formular" method="post">
+            <input type="hidden" name="aktion" value="betrag">
+            <input type="hidden" name="id" value="{{ d.id }}">
+            <input class="betrag-eingabe" name="betrag"
+                   value="{{ '%.2f'|format(d.betrag_cent / 100)|replace('.', ',') }}"
+                   inputmode="decimal" aria-label="Betrag in Euro">
+            <button class="knopf-klein" type="submit">Speichern</button>
+          </form>
+        </td>
+        <td>
+          <form class="inline-formular" method="post">
+            <input type="hidden" name="aktion" value="umschalten">
+            <input type="hidden" name="id" value="{{ d.id }}">
+            <button class="status-knopf {{ 'an' if d.aktiv and d.betrag_cent > 0 else 'aus' }}" type="submit">
+              {{ 'aktiv' if d.aktiv and d.betrag_cent > 0 else 'inaktiv' }}
+            </button>
+          </form>
+        </td>
+        <td class="rechts">
+          <form class="inline-formular" method="post"
+                onsubmit="return confirm('Diesen Dauerauftrag wirklich löschen?')">
+            <input type="hidden" name="aktion" value="loeschen">
+            <input type="hidden" name="id" value="{{ d.id }}">
+            <button class="knopf-loeschen" title="Dauerauftrag löschen">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">Noch keine Daueraufträge angelegt.</p>
+  {% endif %}
+</section>
+
+<section class="karte">
+  <h2>Neuer Dauerauftrag <span class="karten-hinweis">(wird für {{ g.benutzer.anzeigename }} angelegt)</span></h2>
+  <form class="buchung-formular" method="post">
+    <input type="hidden" name="aktion" value="neu">
+    <label>Art
+      <select name="art" id="art-auswahl">
+        <option value="ausgabe">Ausgabe</option>
+        <option value="einnahme">Einnahme</option>
+      </select>
+    </label>
+    <label>Betrag (€)
+      <input name="betrag" required inputmode="decimal" placeholder="z. B. 890,00">
+    </label>
+    <label>Kategorie
+      <select name="kategorie_id" id="kategorie-auswahl">
+        {% for k in kategorien %}
+        <option value="{{ k.id }}" data-art="{{ k.art }}">{{ k.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Tag im Monat (1–28)
+      <input type="number" name="monatstag" min="1" max="28" value="1" required>
+    </label>
+    <label class="breit">Beschreibung
+      <input name="beschreibung" required placeholder="z. B. Miete Wohnung">
+    </label>
+    <button type="submit">Anlegen</button>
+  </form>
+</section>
+
+<script>
+  const artAuswahl = document.getElementById("art-auswahl");
+  const kategorieAuswahl = document.getElementById("kategorie-auswahl");
+  function kategorienFiltern() {
+    let erste = null;
+    for (const option of kategorieAuswahl.options) {
+      const passt = option.dataset.art === artAuswahl.value;
+      option.hidden = !passt;
+      option.disabled = !passt;
+      if (passt && erste === null) erste = option;
+    }
+    if (kategorieAuswahl.selectedOptions[0]?.disabled && erste) erste.selected = true;
+  }
+  artAuswahl.addEventListener("change", kategorienFiltern);
+  kategorienFiltern();
+</script>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block titel %}Dashboard – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <h1>Dashboard</h1>
+  <div class="monatswahl">
+    <a class="monat-pfeil" href="{{ url_for('dashboard', monat=vormonat) }}" aria-label="Vormonat">‹</a>
+    <span class="monat-titel">{{ monat_titel }}</span>
+    <a class="monat-pfeil" href="{{ url_for('dashboard', monat=naechster_monat) }}" aria-label="Nächster Monat">›</a>
+  </div>
+</div>
+
+<section class="kacheln">
+  <div class="kachel">
+    <div class="kachel-label">Einnahmen</div>
+    <div class="kachel-wert plus">{{ einnahmen|euro }}</div>
+  </div>
+  <div class="kachel">
+    <div class="kachel-label">Ausgaben</div>
+    <div class="kachel-wert minus">{{ ausgaben|euro }}</div>
+  </div>
+  <div class="kachel">
+    <div class="kachel-label">Saldo</div>
+    <div class="kachel-wert {{ 'plus' if saldo >= 0 else 'minus' }}">{{ saldo|euro }}</div>
+  </div>
+  {% for person in pro_person %}
+  <div class="kachel">
+    <div class="kachel-label">{{ person.name }}</div>
+    <div class="kachel-wert">{{ (person.einnahme - person.ausgabe)|euro }}</div>
+    <div class="kachel-detail">+{{ person.einnahme|euro }} / −{{ person.ausgabe|euro }}</div>
+  </div>
+  {% endfor %}
+</section>
+
+<section class="diagramm-reihe">
+  <div class="karte">
+    <h2>Einnahmen & Ausgaben – letzte 6 Monate</h2>
+    <div id="balken-diagramm" class="diagramm"></div>
+  </div>
+  <div class="karte">
+    <h2>Ausgaben nach Kategorie – {{ monat_titel }}</h2>
+    {% if kategorien_summen %}
+      <div id="ring-diagramm" class="diagramm"></div>
+    {% else %}
+      <p class="leer-hinweis">Noch keine Ausgaben in diesem Monat.</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Letzte Buchungen – {{ monat_titel }}</h2>
+    <a class="knopf-sekundaer" href="{{ url_for('buchungen', monat=monat_key) }}">Alle Buchungen</a>
+  </div>
+  {% if letzte_buchungen %}
+  <table class="tabelle">
+    <thead><tr><th>Datum</th><th>Person</th><th>Kategorie</th><th>Beschreibung</th><th class="rechts">Betrag</th></tr></thead>
+    <tbody>
+      {% for b in letzte_buchungen %}
+      <tr>
+        <td>{{ b.datum }}</td>
+        <td>{{ b.person }}</td>
+        <td>{{ b.kategorie }}</td>
+        <td>{{ b.beschreibung or "–" }}</td>
+        <td class="rechts {{ 'plus' if b.art == 'einnahme' else 'minus' }}">
+          {{ '+' if b.art == 'einnahme' else '−' }}{{ b.betrag_cent|euro }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">Noch keine Buchungen in diesem Monat. Lege unter „Buchungen“ die erste an.</p>
+  {% endif %}
+</section>
+
+<div id="tooltip" class="tooltip" hidden></div>
+<script>
+  window.VERLAUF = {{ verlauf|tojson }};
+  window.KATEGORIEN = {{ kategorien_summen|tojson }};
+</script>
+<script src="{{ url_for('static', filename='diagramme.js') }}"></script>
+{% endblock %}
