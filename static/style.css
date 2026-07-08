@@ -213,7 +213,69 @@ button:hover { filter: brightness(1.08); }
 .tooltip .t-titel { font-weight: 600; }
 .tooltip .t-zeile { color: var(--tinte-2); white-space: nowrap; }
 
+/* ---------- Mobil (Smartphones) ---------- */
 @media (max-width: 720px) {
-  .kopf-innen { flex-wrap: wrap; gap: 0.5rem; }
-  .kopf nav { order: 3; width: 100%; }
+  .kopf-innen { flex-wrap: wrap; gap: 0.5rem; padding: 0.5rem 0.9rem; }
+  .kopf nav {
+    order: 3; flex: 0 0 100%; overflow-x: auto; flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .kopf nav::-webkit-scrollbar { display: none; }
+  .kopf nav a { white-space: nowrap; }
+}
+
+@media (max-width: 640px) {
+  body { font-size: 16px; } /* verhindert Auto-Zoom von iOS bei Eingabefeldern */
+  .inhalt { padding: 1rem 0.9rem 2.5rem; }
+  .seitenkopf { margin-bottom: 0.9rem; }
+  .monatswahl { width: 100%; justify-content: space-between; }
+  .monat-pfeil { width: 2.6rem; height: 2.6rem; }
+
+  .kacheln { grid-template-columns: repeat(2, 1fr); gap: 0.6rem; }
+  .kachel { padding: 0.7rem 0.85rem; }
+  .kachel-wert { font-size: 1.15rem; }
+
+  .buchung-formular label, .buchung-formular label.breit { flex: 1 1 100%; min-width: 0; }
+  .buchung-formular button[type="submit"] { width: 100%; padding: 0.75rem; }
+  input, select { padding: 0.65rem 0.75rem; }
+
+  /* Tabellen werden zu Karten: Kopfzeile weg, jede Zeile ein kleines Raster. */
+  .karten-tabelle, .karten-tabelle tbody { display: block; }
+  .karten-tabelle thead { display: none; }
+  .karten-tabelle tr {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas:
+      "datum person aktion"
+      "kategorie kategorie betrag"
+      "beschreibung beschreibung beschreibung";
+    column-gap: 0.6rem; row-gap: 0.15rem;
+    padding: 0.65rem 0; border-bottom: 1px solid var(--linie);
+  }
+  .karten-tabelle tr:last-child { border-bottom: none; }
+  .karten-tabelle tr:hover td { background: none; }
+  .karten-tabelle td { display: block; padding: 0; border: none; }
+  .t-datum { grid-area: datum; color: var(--tinte-3); font-size: 0.8rem; }
+  .t-person { grid-area: person; color: var(--tinte-3); font-size: 0.8rem; }
+  .t-person::before { content: "· "; }
+  .t-kategorie { grid-area: kategorie; font-weight: 600; }
+  .t-beschreibung { grid-area: beschreibung; color: var(--tinte-2); font-size: 0.9rem; }
+  .t-betrag { grid-area: betrag; font-weight: 600; align-self: center; }
+  .t-status { grid-area: status; }
+  .t-aktion { grid-area: aktion; }
+  .knopf-loeschen { padding: 0.3rem 0.7rem; font-size: 1rem; }
+
+  /* Daueraufträge: zusätzlich Status-Zeile und Betrag-Formular in voller Breite. */
+  .da-karten tr {
+    grid-template-areas:
+      "datum person aktion"
+      "kategorie kategorie status"
+      "beschreibung beschreibung beschreibung"
+      "betrag betrag betrag";
+  }
+  .da-karten .t-datum::before { content: "Tag "; }
+  .da-karten .t-person::before { content: "· "; }
+  .da-karten .t-betrag { margin-top: 0.4rem; }
+  .da-karten .t-betrag .inline-formular { display: flex; width: 100%; }
+  .da-karten .betrag-eingabe { flex: 1; width: auto; min-width: 0; }
 }

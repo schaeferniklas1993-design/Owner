@@ -53,16 +53,16 @@
     <a class="knopf-sekundaer" href="{{ url_for('buchungen', monat=monat_key) }}">Alle Buchungen</a>
   </div>
   {% if letzte_buchungen %}
-  <table class="tabelle">
+  <table class="tabelle karten-tabelle">
     <thead><tr><th>Datum</th><th>Person</th><th>Kategorie</th><th>Beschreibung</th><th class="rechts">Betrag</th></tr></thead>
     <tbody>
       {% for b in letzte_buchungen %}
       <tr>
-        <td>{{ b.datum }}</td>
-        <td>{{ b.person }}</td>
-        <td>{{ b.kategorie }}</td>
-        <td>{{ b.beschreibung or "–" }}</td>
-        <td class="rechts {{ 'plus' if b.art == 'einnahme' else 'minus' }}">
+        <td class="t-datum">{{ b.datum }}</td>
+        <td class="t-person">{{ b.person }}</td>
+        <td class="t-kategorie">{{ b.kategorie }}</td>
+        <td class="t-beschreibung">{{ b.beschreibung or "–" }}</td>
+        <td class="t-betrag rechts {{ 'plus' if b.art == 'einnahme' else 'minus' }}">
           {{ '+' if b.art == 'einnahme' else '−' }}{{ b.betrag_cent|euro }}
         </td>
       </tr>
