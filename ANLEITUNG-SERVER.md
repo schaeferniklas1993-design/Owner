@@ -1,195 +1,188 @@
-# Anleitung: Haushaltsbuch auf einem günstigen Server – Nutzung vom Handy
+# Schritt-für-Schritt: Haushaltsbuch auf einem günstigen Cloud-Server
 
-Ziel: Das Haushaltsbuch läuft rund um die Uhr auf einem kleinen Mietserver,
-und ihr beide nutzt es von euren iPhones aus – von überall, verschlüsselt
-per HTTPS, wie eine normale App auf dem Home-Bildschirm.
+**Das Ziel:** Das Haushaltsbuch läuft Tag und Nacht auf einem kleinen
+Mietserver (~3,50 €/Monat). Du und deine Frau öffnet es auf euren iPhones
+wie eine normale App – von überall, verschlüsselt per HTTPS.
 
-**Kosten: ca. 3–4 € im Monat.** Ihr braucht einmalig etwa eine Stunde Zeit
-und einen PC/Laptop für die Einrichtung (danach läuft alles ohne PC).
+**Das Gute:** Die gesamte Server-Konfiguration erledigt ein mitgeliefertes
+Skript (`deploy/server-setup.sh`) automatisch. Deine Aufgabe ist nur:
+Server anklicken, Adresse anlegen, drei Befehle einfügen.
+
+**Du brauchst:** ~30 Minuten, eine Kreditkarte oder PayPal für den
+Server-Anbieter, einen PC oder Laptop für die Einrichtung (nur einmalig).
 
 ---
 
-## Schritt 1: Server mieten (~ 3,50 €/Monat)
+## Teil 1: Server mieten bei Hetzner (~10 Minuten)
 
-Empfehlung: **Hetzner Cloud** (deutscher Anbieter, Rechenzentrum in
-Deutschland/Finnland, minutengenaue Abrechnung, jederzeit kündbar).
+Hetzner ist ein deutscher Anbieter, Server stehen in Deutschland,
+monatlich kündbar, Abrechnung minutengenau.
 
-1. Konto anlegen auf https://console.hetzner.cloud
-2. **Neues Projekt** anlegen (z. B. „Haushaltsbuch“), dann **Server hinzufügen**:
-   - Standort: Nürnberg oder Falkenstein
-   - Abbild (Image): **Ubuntu 24.04**
-   - Typ: der kleinste reicht dicke – z. B. **CAX11** (Arm, 2 Kerne, 4 GB RAM)
-     oder **CX22**; beide um die 3,50 €/Monat
-   - Bei „SSH-Schlüssel“: wenn ihr keinen habt, einfach weglassen –
-     Hetzner schickt euch dann ein Root-Passwort per E-Mail
-3. Server erstellen. Nach ~1 Minute seht ihr seine **IP-Adresse**
-   (z. B. `203.0.113.45`) – die braucht ihr gleich zweimal.
+1. Öffne https://accounts.hetzner.com/signUp und **registriere dich**
+   (E-Mail + Passwort, danach Identität/Bezahlmethode bestätigen –
+   PayPal oder Karte).
+2. Öffne die **Cloud Console**: https://console.hetzner.cloud
+3. Klicke auf **„+ Neues Projekt“**, nenne es `Haushaltsbuch`, öffne es.
+4. Klicke auf den roten Knopf **„Server hinzufügen“** und wähle:
+   - **Standort:** Falkenstein oder Nürnberg (egal welcher)
+   - **Image:** Ubuntu **24.04**
+   - **Typ:** „Shared vCPU“ → **CX22** (2 vCPU, 4 GB RAM, ~3,79 €/Monat)
+     – oder **CAX11** (Arm) falls angeboten, der ist noch etwas günstiger.
+     Beide sind für diese App massiv überdimensioniert, kleiner geht nicht.
+   - **Netzwerk:** Haken bei „Öffentliche IPv4“ MUSS gesetzt sein
+   - **SSH-Schlüssel:** überspringen (dann bekommst du ein Passwort per Mail)
+   - Alles andere: Standardwerte lassen
+   - **Name** unten: `haushaltsbuch`
+5. Klicke **„Kostenpflichtig erstellen“**. Nach ~1 Minute ist der Server da.
+6. **Notiere die IP-Adresse** des Servers – sie steht groß in der
+   Server-Übersicht, z. B. `203.0.113.45`.
+7. Hetzner schickt dir eine **E-Mail mit dem Root-Passwort** – gleich griffbereit halten.
 
-Alternativen, falls gewünscht: IONOS VPS (ab 1 €/Monat), Netcup (~3 €/Monat).
-Die Schritte darunter sind identisch, sobald ihr ein Ubuntu mit Root-Zugang habt.
+> 💡 Optional, aber empfohlen: In der Server-Ansicht unter **„Backups“**
+> die automatischen Backups aktivieren (+20 %, also ~0,80 €/Monat).
+> Damit kann selbst ein kaputter Server einfach zurückgespielt werden.
 
-## Schritt 2: Kostenlose Internet-Adresse holen (DuckDNS)
+## Teil 2: Kostenlose Internet-Adresse anlegen (~5 Minuten)
 
-Eine feste Adresse statt der nackten IP – und Voraussetzung für HTTPS:
+Statt der IP-Nummer bekommt ihr eine merkbare Adresse – und die ist
+Voraussetzung für das HTTPS-Zertifikat.
 
-1. Auf https://www.duckdns.org mit Google/GitHub anmelden (kostenlos)
-2. Eine Subdomain anlegen, z. B. `haushalt-mustermann` →
-   eure Adresse ist dann `haushalt-mustermann.duckdns.org`
-3. Bei „current ip“ die **IP-Adresse eures Servers** eintragen und speichern
+1. Öffne https://www.duckdns.org und melde dich oben mit Google oder
+   GitHub an (kostenlos, keine Registrierung nötig).
+2. Im Feld unter **„domains“** einen Namen eintragen, z. B.
+   `haushalt-niklas` → Klick auf **„add domain“**.
+   Eure Adresse ist dann: **`haushalt-niklas.duckdns.org`**
+3. In der Zeile eurer neuen Domain ins Feld **„current ip“** die
+   **IP-Adresse des Hetzner-Servers** eintragen (aus Teil 1, Punkt 6)
+   → Klick auf **„update ip“**.
 
-(Wer mag, kauft stattdessen eine eigene Domain für ~5 €/Jahr – funktioniert genauso.)
+Fertig. Die Adresse zeigt jetzt auf euren Server.
 
-## Schritt 3: Mit dem Server verbinden
+## Teil 3: Mit dem Server verbinden (~5 Minuten)
 
-Am PC/Laptop ein Terminal öffnen (Windows: PowerShell) und einloggen –
-IP durch eure ersetzen:
+**Windows:** Startmenü → „PowerShell“ öffnen.
+**Mac:** Programme → Dienstprogramme → „Terminal“.
 
-```bash
+Dort eintippen (deine Server-IP einsetzen) und Enter:
+
+```
 ssh root@203.0.113.45
 ```
 
-Beim ersten Mal mit „yes“ bestätigen; das Passwort kam per E-Mail von Hetzner
-(ihr müsst es beim ersten Login ändern).
+- Frage `Are you sure you want to continue connecting?` → `yes` tippen, Enter.
+- `password:` → das Root-Passwort aus der Hetzner-E-Mail eingeben
+  (man sieht beim Tippen nichts – das ist normal), Enter.
+- Beim ersten Login verlangt der Server, das Passwort zu ändern:
+  erst das alte nochmal, dann zweimal ein neues eigenes.
+  **Das neue Passwort gut aufbewahren!**
 
-## Schritt 4: Grundeinrichtung und Firewall
+Du bist drin, wenn links `root@haushaltsbuch:~#` steht.
 
-Alles am Stück einfügbar:
+## Teil 4: App installieren – drei Befehle (~10 Minuten)
 
-```bash
-apt update && apt -y upgrade
-apt -y install git python3-venv python3-pip ufw
+**Befehl 1 – GitHub-Token bereitlegen** (weil euer Repository privat ist):
 
-# Firewall: nur SSH und Web-Verkehr erlauben
-ufw allow OpenSSH
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw --force enable
+1. Im Browser: https://github.com/settings/personal-access-tokens/new
+2. Name: `haushaltsbuch-server` · Expiration: `No expiration`
+3. „Repository access“: **Only select repositories** → `Owner` auswählen
+4. „Permissions“ → „Repository permissions“ → **Contents: Read-only**
+5. **„Generate token“** klicken und den Token (beginnt mit `github_pat_…`) kopieren.
 
-# Eigener Benutzer, unter dem die App läuft (nicht als root!)
-adduser --system --group --home /opt/haushaltsbuch haushalt
-```
-
-## Schritt 5: App auf den Server holen
-
-Da das Repository privat ist, braucht ihr ein GitHub-Token:
-GitHub → Settings → Developer settings → **Personal access tokens →
-Fine-grained tokens** → Token nur für dieses Repository mit Berechtigung
-„Contents: Read-only“ erstellen.
+**Befehl 2 – App herunterladen** (im schwarzen Server-Fenster, Token einsetzen):
 
 ```bash
-cd /opt
-git clone https://DEIN_GITHUB_TOKEN@github.com/schaeferniklas1993-design/Owner.git haushaltsbuch-code
-cp -r haushaltsbuch-code/. /opt/haushaltsbuch/ && rm -rf haushaltsbuch-code
-
-cd /opt/haushaltsbuch
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-
-# Datenbank anlegen und alles dem App-Benutzer übergeben
-sudo -u haushalt .venv/bin/python database.py
-chown -R haushalt:haushalt /opt/haushaltsbuch
+git clone -b claude/household-budget-tracker-r23vrn https://DEIN_TOKEN@github.com/schaeferniklas1993-design/Owner.git haushaltsbuch
 ```
 
-## Schritt 6: App als Dauerdienst starten
+> Falls dieser Stand inzwischen in den Hauptzweig übernommen wurde,
+> einfach das `-b claude/…` weglassen.
 
-Die fertige Dienstdatei liegt im Repository:
+**Befehl 3 – alles automatisch einrichten** (eure DuckDNS-Adresse einsetzen):
 
 ```bash
-cp /opt/haushaltsbuch/deploy/haushaltsbuch.service /etc/systemd/system/
-systemctl daemon-reload
-systemctl enable --now haushaltsbuch
-systemctl status haushaltsbuch    # muss "active (running)" zeigen
+cd haushaltsbuch && sudo bash deploy/server-setup.sh haushalt-niklas.duckdns.org
 ```
 
-Ab jetzt startet die App automatisch mit – auch nach einem Server-Neustart.
+Das Skript läuft 2–4 Minuten und erledigt selbstständig:
 
-## Schritt 7: HTTPS mit Caddy (automatisches Zertifikat)
+| Schritt | Was passiert |
+|---|---|
+| Firewall | Nur SSH und Web-Verkehr bleiben offen |
+| App-Benutzer | Die App läuft unter einem eigenen Benutzer, nicht als root |
+| Python + Datenbank | Umgebung wird gebaut, `haushalt.db` mit euren zwei Zugängen angelegt |
+| Autostart | systemd-Dienst: App startet automatisch, auch nach Server-Neustart |
+| HTTPS | Caddy wird installiert und holt das Zertifikat von Let's Encrypt selbst |
+| Sicherung | Jede Nacht um 3 Uhr automatische Datenbank-Kopie nach `sicherungen/` |
 
-Caddy nimmt die Anfragen aus dem Internet an, holt sich selbstständig ein
-kostenloses Let's-Encrypt-Zertifikat und leitet an die App weiter:
+Am Ende meldet es `FERTIG!` und zeigt die nächsten Befehle an.
+
+## Teil 5: Passwörter ändern und Gehälter eintragen (~3 Minuten)
+
+Noch im Server-Fenster – **die Startpasswörter müssen weg**, die App ist
+jetzt im Internet erreichbar:
 
 ```bash
-apt -y install debian-keyring debian-archive-keyring apt-transport-https curl
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
-curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | tee /etc/apt/sources.list.d/caddy-stable.list
-apt update && apt -y install caddy
-
-# Vorlage übernehmen und EURE DuckDNS-Adresse eintragen:
-cp /opt/haushaltsbuch/deploy/Caddyfile /etc/caddy/Caddyfile
-nano /etc/caddy/Caddyfile     # haushalt-mustermann.duckdns.org ersetzen
-systemctl reload caddy
+sudo -u haushalt /opt/haushaltsbuch/.venv/bin/python /opt/haushaltsbuch/cli.py passwort niklas
+sudo -u haushalt /opt/haushaltsbuch/.venv/bin/python /opt/haushaltsbuch/cli.py passwort partnerin
 ```
 
-Test: Am PC oder Handy `https://haushalt-mustermann.duckdns.org` öffnen –
-die Anmeldeseite muss mit Schloss-Symbol erscheinen.
+(Jeweils zweimal das neue Passwort eingeben – Tippen bleibt unsichtbar.)
 
-## Schritt 8: Absichern und Gehälter einrichten
-
-**Sofort die Startpasswörter ändern** – die App hängt jetzt im Internet:
+Dann die echten Netto-Gehälter eintragen – sie buchen ab dann automatisch,
+deins am 15., das deiner Frau am 1. des Monats:
 
 ```bash
-cd /opt/haushaltsbuch
-sudo -u haushalt .venv/bin/python cli.py passwort niklas
-sudo -u haushalt .venv/bin/python cli.py passwort partnerin
+sudo -u haushalt /opt/haushaltsbuch/.venv/bin/python /opt/haushaltsbuch/cli.py gehalt niklas 2450,00
+sudo -u haushalt /opt/haushaltsbuch/.venv/bin/python /opt/haushaltsbuch/cli.py gehalt partnerin 2100,00
 ```
 
-Gehälter setzen (buchen dann automatisch am 15. bzw. 1.):
+Mit `exit` vom Server abmelden. Die Einrichtung am PC ist damit beendet –
+der Server läuft ab jetzt allein.
 
-```bash
-sudo -u haushalt .venv/bin/python cli.py gehalt niklas 2450,00
-sudo -u haushalt .venv/bin/python cli.py gehalt partnerin 2100,00
-```
+## Teil 6: Auf beiden iPhones einrichten (~2 Minuten)
 
-## Schritt 9: Auf beiden iPhones einrichten
+Auf **deinem** iPhone und dem **deiner Frau**:
 
-1. In Safari `https://haushalt-mustermann.duckdns.org` öffnen
-2. Anmelden (du als `niklas`, deine Frau als `partnerin`)
-3. **Teilen-Symbol → „Zum Home-Bildschirm“** – fertig: eigenes 💶-Icon,
-   startet im Vollbild, fühlt sich an wie eine App
+1. Safari öffnen → `https://haushalt-niklas.duckdns.org` (eure Adresse)
+   – die Anmeldeseite muss mit **Schloss-Symbol** erscheinen.
+   (Direkt nach der Einrichtung kann das Zertifikat 1–2 Minuten brauchen.)
+2. Anmelden: du als `niklas`, deine Frau als `partnerin` –
+   jeweils mit den neuen Passwörtern aus Teil 5.
+3. **Teilen-Knopf** (Quadrat mit Pfeil) → **„Zum Home-Bildschirm“** → „Hinzufügen“.
 
-## Schritt 10: Tägliche Sicherung (empfohlen)
-
-```bash
-crontab -u haushalt -e
-```
-
-Diese Zeile eintragen (Sicherung jede Nacht um 3 Uhr in `sicherungen/`):
-
-```
-0 3 * * * cd /opt/haushaltsbuch && .venv/bin/python cli.py sicherung
-```
-
-Hetzner bietet zusätzlich automatische Server-Backups für ~20 % Aufpreis
-(~0,80 €/Monat) – ein Klick in der Hetzner-Konsole, lohnt sich.
+Fertig! Das Haushaltsbuch liegt jetzt mit 💶-Icon auf beiden Home-Bildschirmen,
+startet im Vollbild und ihr seht beide dieselben Daten – live.
 
 ---
 
-## Später aktualisieren
+## Später: App aktualisieren
 
-Wenn es eine neue Version der App gibt:
+Wenn es eine neue Version gibt, per SSH einloggen und:
 
 ```bash
-cd /opt/haushaltsbuch
-sudo -u haushalt git pull
-.venv/bin/pip install -r requirements.txt
-systemctl restart haushaltsbuch
+cd ~/haushaltsbuch && git pull
+sudo bash deploy/server-setup.sh haushalt-niklas.duckdns.org
+sudo systemctl restart haushaltsbuch
 ```
+
+(Das Skript ist wiederholbar – Datenbank und Passwörter bleiben erhalten.)
 
 ## Wenn etwas nicht läuft
 
-| Problem | Prüfen mit |
+| Problem | Lösung |
 |---|---|
-| Seite lädt nicht | `systemctl status haushaltsbuch` und `systemctl status caddy` |
-| App-Fehler ansehen | `journalctl -u haushaltsbuch -n 50` |
-| Kein HTTPS-Zertifikat | Stimmt die IP bei DuckDNS? `journalctl -u caddy -n 50` |
-| Passwort vergessen | `sudo -u haushalt .venv/bin/python cli.py passwort niklas` |
+| Seite lädt gar nicht | `systemctl status haushaltsbuch caddy` – beides muss „active“ sein |
+| Fehlermeldungen der App | `journalctl -u haushaltsbuch -n 50` |
+| Kein Schloss/Zertifikatsfehler | Zeigt DuckDNS wirklich auf die Server-IP? Dann `journalctl -u caddy -n 50` |
+| Passwort vergessen | Teil-5-Befehl einfach erneut ausführen |
+| Alles kaputt | Hetzner-Backup zurückspielen oder Server löschen und Teil 3–5 wiederholen (Sicherung aus `sicherungen/` vorher kopieren) |
 
-## Kostenübersicht
+## Kosten im Überblick
 
 | Posten | Kosten |
 |---|---|
-| Hetzner CAX11/CX22 | ~3,50 €/Monat |
+| Hetzner CX22/CAX11 | ~3,50–3,80 €/Monat |
 | DuckDNS-Adresse | kostenlos |
 | HTTPS-Zertifikat (Let's Encrypt) | kostenlos |
 | Optional: Hetzner-Backups | ~0,80 €/Monat |
-| **Gesamt** | **~3,50–4,30 €/Monat** |
+| **Gesamt** | **~3,50–4,60 €/Monat** |
