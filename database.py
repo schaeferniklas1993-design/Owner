@@ -54,6 +54,12 @@ CREATE TABLE IF NOT EXISTS buchungen (
 
 CREATE INDEX IF NOT EXISTS idx_buchungen_datum ON buchungen(datum);
 CREATE INDEX IF NOT EXISTS idx_buchungen_benutzer ON buchungen(benutzer_id);
+
+-- Pro Dauerauftrag und Monat höchstens eine Buchung, auch wenn mehrere
+-- Server-Prozesse gleichzeitig nachbuchen.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dauerauftrag_monat
+    ON buchungen(dauerauftrag_id, strftime('%Y-%m', datum))
+    WHERE dauerauftrag_id IS NOT NULL;
 """
 
 # Die beiden Zugänge des Haushalts. Passwörter sind Startpasswörter und
@@ -139,13 +145,14 @@ def dauerauftraege_ausfuehren(conn: sqlite3.Connection, heute: datetime.date | N
                     (da["id"], faellig.strftime("%Y-%m")),
                 ).fetchone()
                 if not vorhanden:
-                    conn.execute(
-                        "INSERT INTO buchungen (benutzer_id, art, kategorie_id, betrag_cent,"
-                        " beschreibung, datum, dauerauftrag_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    cursor = conn.execute(
+                        "INSERT OR IGNORE INTO buchungen (benutzer_id, art, kategorie_id,"
+                        " betrag_cent, beschreibung, datum, dauerauftrag_id)"
+                        " VALUES (?, ?, ?, ?, ?, ?, ?)",
                         (da["benutzer_id"], da["art"], da["kategorie_id"], da["betrag_cent"],
                          da["beschreibung"], faellig.isoformat(), da["id"]),
                     )
-                    neu += 1
+                    neu += cursor.rowcount
             monat -= 1
             if monat == 0:
                 jahr, monat = jahr - 1, 12

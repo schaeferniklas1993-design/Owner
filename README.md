@@ -105,8 +105,11 @@ das iPhone bedient sie über Safari (beide Handys teilen sich so dieselbe Datenb
 
 ## Fernzugriff (beide von unterwegs)
 
-`app.py` lauscht auf allen Netzwerk-Schnittstellen (`0.0.0.0`, Port 5000).
-Im Heimnetz reicht also `http://<IP-des-Rechners>:5000`. Für Zugriff von
-außerhalb empfiehlt sich ein VPN (z. B. WireGuard/Tailscale) statt einer
-direkten Portfreigabe – die Anmeldung schützt die Daten, aber ein VPN schützt
-den ganzen Dienst.
+Zwei Wege:
+
+1. **Eigener Mietserver (~3,50 €/Monat), von überall erreichbar** –
+   Schritt-für-Schritt-Anleitung in **[ANLEITUNG-SERVER.md](ANLEITUNG-SERVER.md)**
+   (Hetzner + DuckDNS + HTTPS via Caddy + Autostart per systemd).
+2. **Rechner zu Hause + VPN**: `app.py` lauscht auf allen Schnittstellen
+   (`0.0.0.0`, Port 5000); im Heimnetz reicht `http://<IP-des-Rechners>:5000`,
+   von unterwegs per Tailscale/WireGuard – ohne Portfreigabe im Router.

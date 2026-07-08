@@ -34,6 +34,11 @@ database.init_db()
 app.secret_key = _secret_key()
 app.jinja_env.filters["euro"] = euro
 
+# Auf einem öffentlichen Server (hinter HTTPS) mit BUDGET_HTTPS=1 starten:
+# Session-Cookies werden dann nur noch verschlüsselt übertragen.
+if os.environ.get("BUDGET_HTTPS") == "1":
+    app.config.update(SESSION_COOKIE_SECURE=True, PREFERRED_URL_SCHEME="https")
+
 
 @app.before_request
 def vorbereiten():
