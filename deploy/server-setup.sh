@@ -31,32 +31,33 @@ echo "  Ziel:    $ZIEL"
 echo "  Adresse: https://$DOMAIN"
 echo
 
-echo "==> [1/8] Pakete installieren"
+echo "==> [1/9] Pakete installieren"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -q
 apt-get install -yq python3-venv python3-pip ufw curl gnupg \
+    fail2ban unattended-upgrades \
     debian-keyring debian-archive-keyring apt-transport-https
 
-echo "==> [2/8] Firewall aktivieren (nur SSH, HTTP, HTTPS offen)"
+echo "==> [2/9] Firewall aktivieren (nur SSH, HTTP, HTTPS offen)"
 ufw allow OpenSSH >/dev/null
 ufw allow 80/tcp >/dev/null
 ufw allow 443/tcp >/dev/null
 ufw --force enable
 
-echo "==> [3/8] App-Benutzer anlegen und Dateien kopieren"
+echo "==> [3/9] App-Benutzer anlegen und Dateien kopieren"
 id -u haushalt >/dev/null 2>&1 || adduser --system --group --home "$ZIEL" haushalt
 mkdir -p "$ZIEL"
 if [[ "$QUELLE" != "$ZIEL" ]]; then
     (cd "$QUELLE" && tar --exclude .git --exclude .venv -cf - .) | (cd "$ZIEL" && tar -xf -)
 fi
 
-echo "==> [4/8] Python-Umgebung und Datenbank"
+echo "==> [4/9] Python-Umgebung und Datenbank"
 python3 -m venv "$ZIEL/.venv"
 "$ZIEL/.venv/bin/pip" install -q -r "$ZIEL/requirements.txt"
 chown -R haushalt:haushalt "$ZIEL"
 sudo -u haushalt "$ZIEL/.venv/bin/python" "$ZIEL/database.py"
 
-echo "==> [5/8] Autostart-Dienst einrichten (systemd)"
+echo "==> [5/9] Autostart-Dienst einrichten (systemd)"
 cp "$ZIEL/deploy/haushaltsbuch.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now haushaltsbuch
@@ -66,7 +67,7 @@ systemctl is-active --quiet haushaltsbuch || {
     exit 1
 }
 
-echo "==> [6/8] Caddy installieren (HTTPS mit automatischem Zertifikat)"
+echo "==> [6/9] Caddy installieren (HTTPS mit automatischem Zertifikat)"
 if ! command -v caddy >/dev/null; then
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
         | gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
@@ -79,11 +80,31 @@ printf '%s {\n    reverse_proxy 127.0.0.1:8000\n}\n' "$DOMAIN" > /etc/caddy/Cadd
 systemctl enable --now caddy
 systemctl reload caddy
 
-echo "==> [7/8] Tägliche Datenbank-Sicherung um 3 Uhr nachts"
+echo "==> [7/9] Tägliche Datenbank-Sicherung um 3 Uhr nachts"
 ( crontab -u haushalt -l 2>/dev/null | grep -v "cli.py sicherung" || true
   echo "0 3 * * * cd $ZIEL && .venv/bin/python cli.py sicherung" ) | crontab -u haushalt -
 
-echo "==> [8/8] Selbsttest"
+echo "==> [8/9] Server-Härtung (fail2ban, Auto-Updates, SSH)"
+# fail2ban sperrt IP-Adressen nach wiederholten SSH-Fehlversuchen automatisch.
+systemctl enable --now fail2ban
+
+# Ubuntu-Sicherheitsupdates installieren sich künftig von selbst.
+printf 'APT::Periodic::Update-Package-Lists "1";\nAPT::Periodic::Unattended-Upgrade "1";\n' \
+    > /etc/apt/apt.conf.d/20auto-upgrades
+
+# SSH-Passwort-Login abschalten – aber nur, wenn ein SSH-Key hinterlegt ist,
+# sonst würde man sich selbst aussperren.
+if [[ -s /root/.ssh/authorized_keys ]]; then
+    printf 'PasswordAuthentication no\nPermitRootLogin prohibit-password\n' \
+        > /etc/ssh/sshd_config.d/99-haushaltsbuch.conf
+    systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
+    echo "    SSH-Key gefunden – Passwort-Login per SSH ist jetzt deaktiviert."
+else
+    echo "    HINWEIS: Kein SSH-Key hinterlegt – SSH-Passwort-Login bleibt aktiv."
+    echo "    (Empfehlung: SSH-Key einrichten, dann dieses Skript erneut ausführen.)"
+fi
+
+echo "==> [9/9] Selbsttest"
 STATUS=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8000/login || true)
 if [[ "$STATUS" == "200" ]]; then
     echo "    App antwortet lokal: OK"

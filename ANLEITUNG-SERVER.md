@@ -113,6 +113,7 @@ Das Skript läuft 2–4 Minuten und erledigt selbstständig:
 | Autostart | systemd-Dienst: App startet automatisch, auch nach Server-Neustart |
 | HTTPS | Caddy wird installiert und holt das Zertifikat von Let's Encrypt selbst |
 | Sicherung | Jede Nacht um 3 Uhr automatische Datenbank-Kopie nach `sicherungen/` |
+| Härtung | fail2ban gegen SSH-Angriffe, automatische Sicherheitsupdates, SSH-Passwort-Login aus (sofern SSH-Key hinterlegt) |
 
 Am Ende meldet es `FERTIG!` und zeigt die nächsten Befehle an.
 

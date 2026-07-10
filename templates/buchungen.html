@@ -13,6 +13,7 @@
 <section class="karte">
   <h2>Neue Buchung <span class="karten-hinweis">(wird für {{ g.benutzer.anzeigename }} erfasst)</span></h2>
   <form class="buchung-formular" method="post" action="{{ url_for('buchungen', monat=monat_key) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Art
       <select name="art" id="art-auswahl">
         <option value="ausgabe">Ausgabe</option>
@@ -67,6 +68,7 @@
         <td class="t-aktion rechts">
           <form method="post" action="{{ url_for('buchung_loeschen', buchung_id=b.id) }}"
                 onsubmit="return confirm('Diese Buchung wirklich löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button class="knopf-loeschen" title="Buchung löschen">✕</button>
           </form>
         </td>

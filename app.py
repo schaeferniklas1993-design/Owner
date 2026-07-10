@@ -39,6 +39,16 @@ app.jinja_env.filters["euro"] = euro
 if os.environ.get("BUDGET_HTTPS") == "1":
     app.config.update(SESSION_COOKIE_SECURE=True, PREFERRED_URL_SCHEME="https")
 
+app.jinja_env.globals["csrf_token"] = lambda: session.get("csrf_token", "")
+
+
+def _client_ip() -> str:
+    """Adresse des Aufrufers; hinter Caddy steht sie in X-Forwarded-For."""
+    weitergeleitet = request.headers.get("X-Forwarded-For", "")
+    if weitergeleitet:
+        return weitergeleitet.split(",")[0].strip()
+    return request.remote_addr or "unbekannt"
+
 
 @app.before_request
 def vorbereiten():
@@ -49,6 +59,16 @@ def vorbereiten():
         g.benutzer = g.db.execute(
             "SELECT * FROM benutzer WHERE id = ?", (session["benutzer_id"],)
         ).fetchone()
+
+    # CSRF-Schutz: Jedes POST-Formular muss das Token der eigenen Sitzung mitschicken,
+    # damit fremde Webseiten keine Aktionen im Namen eines angemeldeten Benutzers auslösen.
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(16)
+    if request.method == "POST":
+        if not secrets.compare_digest(
+            request.form.get("csrf_token", ""), session["csrf_token"]
+        ):
+            abort(400, "Ungültiges oder fehlendes Sicherheits-Token. Bitte Seite neu laden.")
 
 
 @app.teardown_request
@@ -67,18 +87,45 @@ def anmeldung_erforderlich(view):
     return wrapper
 
 
+MAX_FEHLVERSUCHE = 5  # ... pro Minute, je Benutzername oder IP-Adresse
+
+
 @app.route("/login", methods=["GET", "POST"])
 def login():
     fehler = None
     if request.method == "POST":
+        benutzername = request.form.get("benutzername", "").strip().lower()
+        ip = _client_ip()
+
+        # Login-Bremse: Alte Einträge wegräumen, dann Fehlversuche der letzten Minute zählen.
+        g.db.execute("DELETE FROM login_versuche WHERE zeit < datetime('now', '-1 hour')")
+        fehlversuche = g.db.execute(
+            "SELECT COUNT(*) AS n FROM login_versuche"
+            " WHERE zeit > datetime('now', '-60 seconds') AND (benutzername = ? OR ip = ?)",
+            (benutzername, ip),
+        ).fetchone()["n"]
+        if fehlversuche >= MAX_FEHLVERSUCHE:
+            g.db.commit()
+            return render_template(
+                "login.html",
+                fehler="Zu viele Fehlversuche. Bitte eine Minute warten und erneut versuchen.",
+            ), 429
+
         zeile = g.db.execute(
-            "SELECT * FROM benutzer WHERE benutzername = ?",
-            (request.form.get("benutzername", "").strip().lower(),),
+            "SELECT * FROM benutzer WHERE benutzername = ?", (benutzername,)
         ).fetchone()
         if zeile and check_password_hash(zeile["passwort_hash"], request.form.get("passwort", "")):
+            g.db.execute("DELETE FROM login_versuche WHERE benutzername = ?", (benutzername,))
+            g.db.commit()
             session.clear()
             session["benutzer_id"] = zeile["id"]
+            session["csrf_token"] = secrets.token_hex(16)
             return redirect(url_for("dashboard"))
+
+        g.db.execute(
+            "INSERT INTO login_versuche (benutzername, ip) VALUES (?, ?)", (benutzername, ip)
+        )
+        g.db.commit()
         fehler = "Benutzername oder Passwort ist falsch."
     return render_template("login.html", fehler=fehler)
 

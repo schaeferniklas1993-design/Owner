@@ -23,6 +23,7 @@
         <td class="t-beschreibung">{{ d.beschreibung }}</td>
         <td class="t-betrag rechts">
           <form class="inline-formular" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="aktion" value="betrag">
             <input type="hidden" name="id" value="{{ d.id }}">
             <input class="betrag-eingabe" name="betrag"
@@ -33,6 +34,7 @@
         </td>
         <td class="t-status">
           <form class="inline-formular" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="aktion" value="umschalten">
             <input type="hidden" name="id" value="{{ d.id }}">
             <button class="status-knopf {{ 'an' if d.aktiv and d.betrag_cent > 0 else 'aus' }}" type="submit">
@@ -43,6 +45,7 @@
         <td class="t-aktion rechts">
           <form class="inline-formular" method="post"
                 onsubmit="return confirm('Diesen Dauerauftrag wirklich löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="aktion" value="loeschen">
             <input type="hidden" name="id" value="{{ d.id }}">
             <button class="knopf-loeschen" title="Dauerauftrag löschen">✕</button>
@@ -60,6 +63,7 @@
 <section class="karte">
   <h2>Neuer Dauerauftrag <span class="karten-hinweis">(wird für {{ g.benutzer.anzeigename }} angelegt)</span></h2>
   <form class="buchung-formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <input type="hidden" name="aktion" value="neu">
     <label>Art
       <select name="art" id="art-auswahl">

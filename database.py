@@ -55,6 +55,15 @@ CREATE TABLE IF NOT EXISTS buchungen (
 CREATE INDEX IF NOT EXISTS idx_buchungen_datum ON buchungen(datum);
 CREATE INDEX IF NOT EXISTS idx_buchungen_benutzer ON buchungen(benutzer_id);
 
+-- Fehlgeschlagene Anmeldungen für die Login-Bremse (Schutz vor Passwort-Raten).
+CREATE TABLE IF NOT EXISTS login_versuche (
+    id           INTEGER PRIMARY KEY,
+    benutzername TEXT NOT NULL,
+    ip           TEXT NOT NULL,
+    zeit         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_login_versuche_zeit ON login_versuche(zeit);
+
 -- Pro Dauerauftrag und Monat höchstens eine Buchung, auch wenn mehrere
 -- Server-Prozesse gleichzeitig nachbuchen.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_dauerauftrag_monat

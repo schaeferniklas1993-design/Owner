@@ -7,6 +7,7 @@
     <h1>Haushaltsbuch</h1>
     <p class="login-untertitel">Gemeinsame Ein- und Ausgaben, ein Konto pro Person.</p>
     {% if fehler %}<div class="meldung meldung-fehler">{{ fehler }}</div>{% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <label>Benutzername
       <input name="benutzername" autocomplete="username" autofocus required
              placeholder="niklas oder partnerin">
