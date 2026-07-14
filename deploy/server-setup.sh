@@ -74,11 +74,31 @@ if ! command -v caddy >/dev/null; then
     curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
         > /etc/apt/sources.list.d/caddy-stable.list
     apt-get update -q
-    apt-get install -yq caddy
+    # Der Startversuch mit der Standard-Konfiguration darf scheitern –
+    # gleich wird ohnehin mit eurer eigenen Konfiguration neu gestartet.
+    apt-get install -yq caddy \
+        || echo "    (Erster Caddy-Start fehlgeschlagen – neuer Versuch mit eurer Konfiguration.)"
+    command -v caddy >/dev/null || { echo "FEHLER: Caddy wurde nicht installiert."; exit 1; }
 fi
+
 printf '%s {\n    reverse_proxy 127.0.0.1:8000\n}\n' "$DOMAIN" > /etc/caddy/Caddyfile
-systemctl enable --now caddy
-systemctl reload caddy
+if ! caddy validate --config /etc/caddy/Caddyfile >/dev/null 2>&1; then
+    echo "FEHLER: Die Caddy-Konfiguration ist ungültig."
+    echo "Ist die Adresse '$DOMAIN' richtig geschrieben (ohne https:// davor)?"
+    exit 1
+fi
+
+systemctl enable caddy >/dev/null 2>&1 || true
+if ! systemctl restart caddy; then
+    echo
+    echo "FEHLER: Caddy startet nicht. Die letzten Meldungen von Caddy:"
+    echo "------------------------------------------------------------"
+    journalctl -u caddy -n 25 --no-pager || true
+    echo "------------------------------------------------------------"
+    echo "Belegte Web-Ports (dort darf ausser caddy nichts stehen):"
+    ss -tlnp | grep -E ':80 |:443 ' || echo "  (Port 80/443 sind frei)"
+    exit 1
+fi
 
 echo "==> [7/9] Tägliche Datenbank-Sicherung um 3 Uhr nachts"
 ( crontab -u haushalt -l 2>/dev/null | grep -v "cli.py sicherung" || true
