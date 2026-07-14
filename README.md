@@ -10,7 +10,7 @@ zwei Zugängen, drei Claude-Agents und einer Web-Oberfläche.
 | Datenbank | `database.py` → `haushalt.db` (SQLite) | Benutzer, Kategorien, Buchungen, Daueraufträge |
 | Web-Oberfläche | `app.py`, `templates/`, `static/` | Login, Dashboard mit Diagrammen, Buchungen, Daueraufträge |
 | Kommandozeile | `cli.py` | Buchen und Auswerten ohne Browser – das Werkzeug der Agents |
-| Agents | `.claude/agents/` | `finanzagent-niklas`, `finanzagent-partnerin`, `haushaltsanalyst` |
+| Agents | `.claude/agents/` | `finanzagent-niklas`, `finanzagent-maeuschen`, `haushaltsanalyst` |
 
 ## Schnellstart
 
@@ -28,7 +28,7 @@ beiden Zugänge und der Gehalts-Daueraufträge.
 | Benutzername | Startpasswort | Gehalt (Dauerauftrag) |
 |---|---|---|
 | `niklas` | `niklas-start` | am **15.** des Monats (Mitte des Monats) |
-| `partnerin` | `partnerin-start` | am **1.** des Monats |
+| `maeuschen` | `maeuschen-start` | am **1.** des Monats |
 
 **Beim ersten Login** fragt die App jeden Benutzer automatisch nach einem
 eigenen neuen Passwort (mindestens 8 Zeichen) – erst danach geht es ins
@@ -43,7 +43,7 @@ gesetzt ist – entweder in der Web-Oberfläche unter **Daueraufträge** oder pe
 
 ```bash
 python3 cli.py gehalt niklas 2450,00      # bucht ab sofort jeden 15. automatisch
-python3 cli.py gehalt partnerin 2100,00   # bucht ab sofort jeden 1. automatisch
+python3 cli.py gehalt maeuschen 2100,00   # bucht ab sofort jeden 1. automatisch
 ```
 
 Fällige Daueraufträge werden bei jedem Aufruf von Web-App oder CLI automatisch
@@ -55,19 +55,19 @@ Die Agents liegen in `.claude/agents/` und stehen in Claude Code automatisch
 zur Verfügung, sobald dieses Projekt geöffnet ist:
 
 - **finanzagent-niklas** – bucht Einnahmen/Ausgaben ausschließlich für Niklas.
-- **finanzagent-partnerin** – bucht ausschließlich für die Partnerin.
+- **finanzagent-maeuschen** – bucht ausschließlich für die Mäuschen.
 - **haushaltsanalyst** – wertet den gesamten Haushalt aus (Berichte, Sparquote,
   größte Ausgabenposten), bucht aber selbst nichts.
 
 Beispiele: *„Buche 54,30 € Lebensmittel für Niklas“* ·
-*„Buche 32,90 € Restaurant für die Partnerin“* ·
+*„Buche 32,90 € Restaurant für die Mäuschen“* ·
 *„Wie steht der Haushalt diesen Monat da?“*
 
 ## CLI-Referenz
 
 ```bash
 python3 cli.py --benutzer niklas ausgabe 54,30 --kategorie Lebensmittel --beschreibung "Wocheneinkauf"
-python3 cli.py --benutzer partnerin einnahme 80,00 --kategorie Geschenk --datum 2026-07-10
+python3 cli.py --benutzer maeuschen einnahme 80,00 --kategorie Geschenk --datum 2026-07-10
 python3 cli.py --benutzer niklas uebersicht --monat 2026-07   # Monatsübersicht einer Person
 python3 cli.py bericht --monat 2026-07                        # Haushaltsbericht beider Personen
 python3 cli.py kategorien                                     # alle Kategorien

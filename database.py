@@ -72,12 +72,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_dauerauftrag_monat
     WHERE dauerauftrag_id IS NOT NULL;
 """
 
-# Die beiden Zugänge des Haushalts. Passwörter sind Startpasswörter und
-# sollten mit `python3 cli.py passwort <benutzername>` geändert werden.
+# Die beiden Zugänge des Haushalts. Die Startpasswörter gelten nur für den
+# ersten Login – die App fragt dann sofort nach einem eigenen Passwort.
 STANDARD_BENUTZER = [
     # (benutzername, anzeigename, startpasswort, gehaltstag)
     ("niklas", "Niklas", "niklas-start", 15),   # Gehalt Mitte des Monats
-    ("partnerin", "Partnerin", "partnerin-start", 1),  # Gehalt am Monatsersten
+    ("maeuschen", "Mäuschen", "maeuschen-start", 1),  # Gehalt am Monatsersten
 ]
 
 STANDARD_KATEGORIEN = {
@@ -111,6 +111,16 @@ def init_db() -> None:
                 "ALTER TABLE benutzer ADD COLUMN"
                 " muss_passwort_aendern INTEGER NOT NULL DEFAULT 1"
             )
+
+        # Migration: Aus „Partnerin" wurde „Mäuschen" – Bestandsdaten umbenennen.
+        conn.execute(
+            "UPDATE benutzer SET benutzername = 'maeuschen', anzeigename = 'Mäuschen'"
+            " WHERE benutzername = 'partnerin'"
+        )
+        conn.execute(
+            "UPDATE dauerauftraege SET beschreibung = 'Gehalt Mäuschen'"
+            " WHERE beschreibung = 'Gehalt Partnerin'"
+        )
 
         if conn.execute("SELECT COUNT(*) AS n FROM benutzer").fetchone()["n"] == 0:
             for benutzername, anzeigename, passwort, gehaltstag in STANDARD_BENUTZER:

@@ -122,7 +122,7 @@ Am Ende meldet es `FERTIG!` und zeigt die nächsten Befehle an.
 **Passwörter braucht ihr hier nicht mehr zu setzen:** Beim ersten Login am
 Handy fragt die App jeden von euch automatisch nach einem eigenen neuen
 Passwort (Anmeldung zunächst mit `niklas` / `niklas-start` bzw.
-`partnerin` / `partnerin-start`, dann erscheint die Passwort-wählen-Seite).
+`maeuschen` / `maeuschen-start`, dann erscheint die Passwort-wählen-Seite).
 Das iPhone bietet danach an, das Passwort im Schlüsselbund zu speichern.
 
 Noch im Server-Fenster die echten Netto-Gehälter eintragen – sie buchen ab
@@ -130,7 +130,7 @@ dann automatisch, deins am 15., das deiner Frau am 1. des Monats:
 
 ```bash
 sudo -u haushalt /opt/haushaltsbuch/.venv/bin/python /opt/haushaltsbuch/cli.py gehalt niklas 2450,00
-sudo -u haushalt /opt/haushaltsbuch/.venv/bin/python /opt/haushaltsbuch/cli.py gehalt partnerin 2100,00
+sudo -u haushalt /opt/haushaltsbuch/.venv/bin/python /opt/haushaltsbuch/cli.py gehalt maeuschen 2100,00
 ```
 
 Mit `exit` vom Server abmelden. Die Einrichtung am PC ist damit beendet –
@@ -144,7 +144,7 @@ Auf **deinem** iPhone und dem **deiner Frau**:
    – die Anmeldeseite muss mit **Schloss-Symbol** erscheinen.
    (Direkt nach der Einrichtung kann das Zertifikat 1–2 Minuten brauchen.)
 2. Anmelden: du als `niklas` (Startpasswort `niklas-start`), deine Frau als
-   `partnerin` (Startpasswort `partnerin-start`).
+   `maeuschen` (Startpasswort `maeuschen-start`).
 3. Die App fragt jetzt automatisch: **eigenes neues Passwort wählen**
    (mindestens 8 Zeichen), speichern – und die iPhone-Frage
    „Passwort sichern?“ mit **Ja** beantworten, dann ist es im Schlüsselbund.

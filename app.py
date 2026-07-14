@@ -1,7 +1,7 @@
 """Haushaltsbuch – Web-Oberfläche (Flask).
 
 Start:  python3 app.py   →  http://localhost:5000
-Zwei Zugänge: niklas / partnerin (Startpasswörter siehe README).
+Zwei Zugänge: niklas / maeuschen (Startpasswörter siehe README).
 """
 import datetime
 import functools

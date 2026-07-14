@@ -3,7 +3,7 @@
 
 Beispiele:
   python3 cli.py --benutzer niklas einnahme 2450,00 --kategorie Gehalt --beschreibung "Gehalt Juli"
-  python3 cli.py --benutzer partnerin ausgabe 54,30 --kategorie Lebensmittel --datum 2026-07-05
+  python3 cli.py --benutzer maeuschen ausgabe 54,30 --kategorie Lebensmittel --datum 2026-07-05
   python3 cli.py --benutzer niklas uebersicht --monat 2026-07
   python3 cli.py bericht --monat 2026-07
   python3 cli.py kategorien
@@ -45,7 +45,7 @@ def _kategorie(conn, name: str, art: str):
 
 def buchen(conn, args, art: str) -> None:
     if not args.benutzer:
-        sys.exit("Bitte --benutzer angeben (niklas oder partnerin).")
+        sys.exit("Bitte --benutzer angeben (niklas oder maeuschen).")
     benutzer = _benutzer(conn, args.benutzer)
     kategorie = _kategorie(conn, args.kategorie, art)
     datum = args.datum or datetime.date.today().isoformat()
@@ -194,7 +194,7 @@ def passwort(conn, args) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Haushaltsbuch-Kommandozeile")
-    parser.add_argument("--benutzer", help="Benutzername (niklas oder partnerin)")
+    parser.add_argument("--benutzer", help="Benutzername (niklas oder maeuschen)")
     sub = parser.add_subparsers(dest="befehl", required=True)
 
     for art, hilfe in (("einnahme", "Einnahme buchen"), ("ausgabe", "Ausgabe buchen")):
