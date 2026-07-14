@@ -185,7 +185,7 @@ def passwort(conn, args) -> None:
     if neu != getpass.getpass("Passwort wiederholen: "):
         sys.exit("Die Passwörter stimmen nicht überein.")
     conn.execute(
-        "UPDATE benutzer SET passwort_hash = ? WHERE id = ?",
+        "UPDATE benutzer SET passwort_hash = ?, muss_passwort_aendern = 0 WHERE id = ?",
         (generate_password_hash(neu), benutzer["id"]),
     )
     conn.commit()

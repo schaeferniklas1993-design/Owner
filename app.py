@@ -10,7 +10,7 @@ import secrets
 
 from flask import (Flask, abort, flash, g, redirect, render_template, request,
                    session, url_for)
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
 import database
 from database import cent, euro
@@ -83,6 +83,9 @@ def anmeldung_erforderlich(view):
     def wrapper(*args, **kwargs):
         if g.benutzer is None:
             return redirect(url_for("login"))
+        # Erster Login: Zuerst ein eigenes Passwort wählen, dann geht es weiter.
+        if g.benutzer["muss_passwort_aendern"] and request.endpoint != "passwort_aendern":
+            return redirect(url_for("passwort_aendern"))
         return view(*args, **kwargs)
     return wrapper
 
@@ -134,6 +137,39 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for("login"))
+
+
+@app.route("/passwort", methods=["GET", "POST"])
+@anmeldung_erforderlich
+def passwort_aendern():
+    erzwungen = bool(g.benutzer["muss_passwort_aendern"])
+    if request.method == "POST":
+        fehler = None
+        neu = request.form.get("neues_passwort", "")
+        # Beim erzwungenen ersten Wechsel wurde das aktuelle Passwort gerade
+        # erst beim Login eingegeben; bei freiwilligem Wechsel fragen wir es ab.
+        if not erzwungen and not check_password_hash(
+            g.benutzer["passwort_hash"], request.form.get("aktuelles_passwort", "")
+        ):
+            fehler = "Das aktuelle Passwort ist falsch."
+        elif len(neu) < 8:
+            fehler = "Das neue Passwort muss mindestens 8 Zeichen haben."
+        elif neu != request.form.get("wiederholung", ""):
+            fehler = "Die beiden Eingaben stimmen nicht überein."
+        elif neu.lower() in (g.benutzer["benutzername"], f"{g.benutzer['benutzername']}-start"):
+            fehler = "Bitte ein eigenes, neues Passwort wählen."
+
+        if fehler:
+            flash(fehler, "fehler")
+        else:
+            g.db.execute(
+                "UPDATE benutzer SET passwort_hash = ?, muss_passwort_aendern = 0 WHERE id = ?",
+                (generate_password_hash(neu), g.benutzer["id"]),
+            )
+            g.db.commit()
+            flash("Dein neues Passwort ist gespeichert. Ab jetzt meldest du dich damit an.", "ok")
+            return redirect(url_for("dashboard"))
+    return render_template("passwort.html", erzwungen=erzwungen)
 
 
 def _monat_aus_request() -> tuple[int, int]:

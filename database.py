@@ -14,11 +14,12 @@ DB_PFAD = os.environ.get("BUDGET_DB", os.path.join(BASIS_VERZEICHNIS, "haushalt.
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS benutzer (
-    id            INTEGER PRIMARY KEY,
-    benutzername  TEXT UNIQUE NOT NULL,
-    anzeigename   TEXT NOT NULL,
-    passwort_hash TEXT NOT NULL,
-    gehaltstag    INTEGER NOT NULL DEFAULT 1
+    id                    INTEGER PRIMARY KEY,
+    benutzername          TEXT UNIQUE NOT NULL,
+    anzeigename           TEXT NOT NULL,
+    passwort_hash         TEXT NOT NULL,
+    gehaltstag            INTEGER NOT NULL DEFAULT 1,
+    muss_passwort_aendern INTEGER NOT NULL DEFAULT 1
 );
 
 CREATE TABLE IF NOT EXISTS kategorien (
@@ -101,6 +102,15 @@ def init_db() -> None:
     conn = verbinden()
     try:
         conn.executescript(SCHEMA)
+
+        # Migration für Datenbanken aus früheren Versionen: Beim ersten Login
+        # wählt jeder Benutzer ein eigenes Passwort direkt in der Web-Oberfläche.
+        spalten = [z["name"] for z in conn.execute("PRAGMA table_info(benutzer)")]
+        if "muss_passwort_aendern" not in spalten:
+            conn.execute(
+                "ALTER TABLE benutzer ADD COLUMN"
+                " muss_passwort_aendern INTEGER NOT NULL DEFAULT 1"
+            )
 
         if conn.execute("SELECT COUNT(*) AS n FROM benutzer").fetchone()["n"] == 0:
             for benutzername, anzeigename, passwort, gehaltstag in STANDARD_BENUTZER:

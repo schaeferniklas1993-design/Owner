@@ -201,6 +201,7 @@ button:hover { filter: brightness(1.08); }
 .login-untertitel { color: var(--tinte-2); text-align: center; margin: -0.4rem 0 0.4rem; font-size: 0.9rem; }
 .login-karte label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; color: var(--tinte-2); }
 .login-karte button { margin-top: 0.4rem; }
+.feld-hinweis { color: var(--tinte-3); font-weight: 400; }
 
 /* Tooltip für Diagramme */
 .tooltip {

@@ -30,12 +30,11 @@ beiden Zugänge und der Gehalts-Daueraufträge.
 | `niklas` | `niklas-start` | am **15.** des Monats (Mitte des Monats) |
 | `partnerin` | `partnerin-start` | am **1.** des Monats |
 
-**Wichtig:** Startpasswörter nach der ersten Anmeldung ändern:
-
-```bash
-python3 cli.py passwort niklas
-python3 cli.py passwort partnerin
-```
+**Beim ersten Login** fragt die App jeden Benutzer automatisch nach einem
+eigenen neuen Passwort (mindestens 8 Zeichen) – erst danach geht es ins
+Dashboard. iPhone/Browser bieten dabei an, das Passwort zu speichern.
+Später ändern: Menüpunkt **„Passwort“** in der App oder
+`python3 cli.py passwort <benutzername>`.
 
 ## Gehälter einrichten
 
