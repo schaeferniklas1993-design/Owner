@@ -34,9 +34,12 @@
   </div>
   {% for person in pro_person %}
   <div class="kachel">
-    <div class="kachel-label">{{ person.name }}</div>
-    <div class="kachel-wert">{{ (person.einnahme - person.ausgabe)|euro }}</div>
-    <div class="kachel-detail">+{{ person.einnahme|euro }} / −{{ person.ausgabe|euro }}</div>
+    <div class="kachel-label">💳 {{ person.name }} – Kontostand</div>
+    <div class="kachel-wert {{ 'plus' if person.kontostand >= 0 else 'minus' }}">{{ person.kontostand|euro }}</div>
+    <div class="kachel-detail">+{{ person.einnahme|euro }} / −{{ person.ausgabe|euro }} in diesem Monat</div>
+    {% if person.benutzername == g.benutzer.benutzername %}
+    <a class="kachel-link" href="{{ url_for('konto') }}">Kontostand anpassen</a>
+    {% endif %}
   </div>
   {% endfor %}
 </section>

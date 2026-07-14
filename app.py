@@ -22,13 +22,17 @@ MONATSNAMEN = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
 
 KATEGORIE_ICONS = {
     # Einnahmen
-    "Gehalt": "💼", "Nebeneinkünfte": "🪙", "Rückerstattung": "💸",
-    "Geschenk": "🎁", "Sonstige Einnahme": "✨",
+    "Gehalt": "💼", "Nebeneinkünfte": "🪙", "Bonus & Prämie": "🏆",
+    "Verkauf": "🏷️", "Zinsen & Kapitalerträge": "📈", "Kindergeld": "👶",
+    "Rückerstattung": "💸", "Geschenk": "🎁", "Sonstige Einnahme": "✨",
     # Ausgaben
-    "Miete": "🏠", "Nebenkosten": "💡", "Lebensmittel": "🛒",
-    "Versicherungen": "🛡️", "Mobilität": "🚗", "Gesundheit": "💊",
-    "Kleidung": "👕", "Freizeit": "⚽", "Restaurant & Café": "🍽️",
-    "Abos & Medien": "📺", "Haushalt": "🧺", "Sparen & Rücklagen": "🏦",
+    "Miete": "🏠", "Nebenkosten": "💡", "Handy & Internet": "📱",
+    "Lebensmittel": "🛒", "Versicherungen": "🛡️", "Kredite & Raten": "💳",
+    "Mobilität": "🚗", "Gesundheit": "💊", "Kleidung": "👕",
+    "Freizeit": "⚽", "Restaurant & Café": "🍽️", "Abos & Medien": "📺",
+    "Haushalt": "🧺", "Möbel & Technik": "🛋️", "Urlaub & Reisen": "✈️",
+    "Kinder": "🧸", "Haustiere": "🐾", "Geschenke": "🎁", "Bildung": "🎓",
+    "Spenden": "❤️", "Steuern & Gebühren": "🧾", "Sparen & Rücklagen": "🏦",
     "Sonstige Ausgabe": "📦",
 }
 
@@ -194,6 +198,43 @@ def passwort_aendern():
     return render_template("passwort.html", erzwungen=erzwungen)
 
 
+@app.route("/konto", methods=["GET", "POST"])
+@anmeldung_erforderlich
+def konto():
+    """Kontostand direkt setzen, ohne eine Buchung anzulegen.
+
+    Die Differenz wird als Startsaldo gespeichert – alle Buchungen bleiben unverändert.
+    """
+    def buchungssumme(benutzer_id: int) -> int:
+        return g.db.execute(
+            "SELECT COALESCE(SUM(CASE WHEN art = 'einnahme' THEN betrag_cent"
+            " ELSE -betrag_cent END), 0) AS s FROM buchungen WHERE benutzer_id = ?",
+            (benutzer_id,),
+        ).fetchone()["s"]
+
+    if request.method == "POST":
+        try:
+            gewuenscht = database.cent_signed(request.form["kontostand"])
+            g.db.execute(
+                "UPDATE benutzer SET startsaldo_cent = ? WHERE id = ?",
+                (gewuenscht - buchungssumme(g.benutzer["id"]), g.benutzer["id"]),
+            )
+            g.db.commit()
+            flash(f"Dein Kontostand wurde auf {euro(gewuenscht)} gesetzt.", "ok")
+            return redirect(url_for("dashboard"))
+        except (ValueError, KeyError):
+            flash("Bitte einen gültigen Betrag eingeben, z. B. 843,20 oder -120,50.", "fehler")
+        return redirect(url_for("konto"))
+
+    personen = [
+        {"name": u["anzeigename"],
+         "kontostand": u["startsaldo_cent"] + buchungssumme(u["id"]),
+         "eigene": u["id"] == g.benutzer["id"]}
+        for u in g.db.execute("SELECT * FROM benutzer ORDER BY id")
+    ]
+    return render_template("konto.html", personen=personen)
+
+
 def _monat_aus_request() -> tuple[int, int]:
     heute = datetime.date.today()
     try:
@@ -229,9 +270,23 @@ def dashboard():
             zeile["benutzer_id"], {"name": zeile["anzeigename"], "einnahme": 0, "ausgabe": 0}
         )
         person[zeile["art"]] = zeile["summe"]
-    # Alle Benutzer anzeigen, auch ohne Buchungen im Monat.
-    for u in g.db.execute("SELECT id, anzeigename FROM benutzer ORDER BY id"):
-        pro_person.setdefault(u["id"], {"name": u["anzeigename"], "einnahme": 0, "ausgabe": 0})
+    # Alle Benutzer anzeigen, auch ohne Buchungen im Monat – inklusive Kontostand
+    # (Startsaldo + alle Buchungen bis zum Ende des angezeigten Monats).
+    naechster_key = _monat_verschieben(jahr, monat, 1)
+    for u in g.db.execute(
+        "SELECT id, anzeigename, benutzername, startsaldo_cent FROM benutzer ORDER BY id"
+    ):
+        person = pro_person.setdefault(
+            u["id"], {"name": u["anzeigename"], "einnahme": 0, "ausgabe": 0}
+        )
+        gesamt = g.db.execute(
+            "SELECT COALESCE(SUM(CASE WHEN art = 'einnahme' THEN betrag_cent"
+            " ELSE -betrag_cent END), 0) AS s FROM buchungen"
+            " WHERE benutzer_id = ? AND datum < ?",
+            (u["id"], f"{naechster_key}-01"),
+        ).fetchone()["s"]
+        person["kontostand"] = u["startsaldo_cent"] + gesamt
+        person["benutzername"] = u["benutzername"]
 
     # Verlauf der letzten 6 Monate für das Balkendiagramm.
     verlauf = []

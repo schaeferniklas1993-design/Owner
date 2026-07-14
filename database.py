@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS benutzer (
     anzeigename           TEXT NOT NULL,
     passwort_hash         TEXT NOT NULL,
     gehaltstag            INTEGER NOT NULL DEFAULT 1,
-    muss_passwort_aendern INTEGER NOT NULL DEFAULT 1
+    muss_passwort_aendern INTEGER NOT NULL DEFAULT 1,
+    startsaldo_cent       INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS kategorien (
@@ -81,11 +82,18 @@ STANDARD_BENUTZER = [
 ]
 
 STANDARD_KATEGORIEN = {
-    "einnahme": ["Gehalt", "Nebeneinkünfte", "Rückerstattung", "Geschenk", "Sonstige Einnahme"],
+    "einnahme": [
+        "Gehalt", "Nebeneinkünfte", "Bonus & Prämie", "Verkauf",
+        "Zinsen & Kapitalerträge", "Kindergeld", "Rückerstattung",
+        "Geschenk", "Sonstige Einnahme",
+    ],
     "ausgabe": [
-        "Miete", "Nebenkosten", "Lebensmittel", "Versicherungen", "Mobilität",
-        "Gesundheit", "Kleidung", "Freizeit", "Restaurant & Café",
-        "Abos & Medien", "Haushalt", "Sparen & Rücklagen", "Sonstige Ausgabe",
+        "Miete", "Nebenkosten", "Handy & Internet", "Lebensmittel",
+        "Versicherungen", "Kredite & Raten", "Mobilität", "Gesundheit",
+        "Kleidung", "Freizeit", "Restaurant & Café", "Abos & Medien",
+        "Haushalt", "Möbel & Technik", "Urlaub & Reisen", "Kinder",
+        "Haustiere", "Geschenke", "Bildung", "Spenden",
+        "Steuern & Gebühren", "Sparen & Rücklagen", "Sonstige Ausgabe",
     ],
 }
 
@@ -111,6 +119,10 @@ def init_db() -> None:
                 "ALTER TABLE benutzer ADD COLUMN"
                 " muss_passwort_aendern INTEGER NOT NULL DEFAULT 1"
             )
+        if "startsaldo_cent" not in spalten:
+            conn.execute(
+                "ALTER TABLE benutzer ADD COLUMN startsaldo_cent INTEGER NOT NULL DEFAULT 0"
+            )
 
         # Migration: Aus „Partnerin" wurde „Mäuschen" – Bestandsdaten umbenennen.
         conn.execute(
@@ -134,10 +146,12 @@ def init_db() -> None:
                     (benutzername, anzeigename, generate_password_hash(passwort), gehaltstag),
                 )
 
-        if conn.execute("SELECT COUNT(*) AS n FROM kategorien").fetchone()["n"] == 0:
-            for art, namen in STANDARD_KATEGORIEN.items():
-                for name in namen:
-                    conn.execute("INSERT INTO kategorien (name, art) VALUES (?, ?)", (name, art))
+        # Standardkategorien anlegen bzw. neue nachrüsten (bestehende bleiben unberührt).
+        for art, namen in STANDARD_KATEGORIEN.items():
+            for name in namen:
+                conn.execute(
+                    "INSERT OR IGNORE INTO kategorien (name, art) VALUES (?, ?)", (name, art)
+                )
 
         if conn.execute("SELECT COUNT(*) AS n FROM dauerauftraege").fetchone()["n"] == 0:
             gehalt = conn.execute(
@@ -204,13 +218,18 @@ def euro(betrag_cent: int) -> str:
 
 def cent(betrag: str) -> int:
     """Wandelt Eingaben wie '1.234,56', '1234.56' oder '1234' in Cent um."""
-    text = str(betrag).strip().replace("€", "").replace(" ", "")
-    if "," in text:
-        text = text.replace(".", "").replace(",", ".")
-    wert = round(float(text) * 100)
+    wert = cent_signed(betrag)
     if wert <= 0:
         raise ValueError("Der Betrag muss größer als 0 sein.")
     return wert
+
+
+def cent_signed(betrag: str) -> int:
+    """Wie cent(), erlaubt aber auch 0 und negative Werte (z. B. Kontostand)."""
+    text = str(betrag).strip().replace("€", "").replace(" ", "")
+    if "," in text:
+        text = text.replace(".", "").replace(",", ".")
+    return round(float(text) * 100)
 
 
 if __name__ == "__main__":

@@ -98,6 +98,11 @@ a { color: var(--akzent); }
 .kachel-detail { color: var(--tinte-3); font-size: 0.8rem; margin-top: 0.2rem; }
 .plus { color: var(--gut); }
 .minus { color: var(--schlecht); }
+.kachel-link {
+  display: inline-block; margin-top: 0.35rem; font-size: 0.8rem;
+  color: var(--akzent); text-decoration: none;
+}
+.kachel-link:hover { text-decoration: underline; }
 
 /* Karten & Diagramme */
 .karte {
