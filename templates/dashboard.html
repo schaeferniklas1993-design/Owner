@@ -14,14 +14,23 @@
   <div class="kachel">
     <div class="kachel-label">Einnahmen</div>
     <div class="kachel-wert plus">{{ einnahmen|euro }}</div>
+    <div class="kachel-detail {{ 'plus' if vergleich.einnahme >= 0 else 'minus' }}">
+      {{ '▲' if vergleich.einnahme >= 0 else '▼' }} {{ vergleich.einnahme|abs|euro }} zum Vormonat
+    </div>
   </div>
   <div class="kachel">
     <div class="kachel-label">Ausgaben</div>
     <div class="kachel-wert minus">{{ ausgaben|euro }}</div>
+    <div class="kachel-detail {{ 'minus' if vergleich.ausgabe > 0 else 'plus' }}">
+      {{ '▲' if vergleich.ausgabe >= 0 else '▼' }} {{ vergleich.ausgabe|abs|euro }} zum Vormonat
+    </div>
   </div>
   <div class="kachel">
     <div class="kachel-label">Saldo</div>
     <div class="kachel-wert {{ 'plus' if saldo >= 0 else 'minus' }}">{{ saldo|euro }}</div>
+    <div class="kachel-detail {{ 'plus' if vergleich.saldo >= 0 else 'minus' }}">
+      {{ '▲' if vergleich.saldo >= 0 else '▼' }} {{ vergleich.saldo|abs|euro }} zum Vormonat
+    </div>
   </div>
   {% for person in pro_person %}
   <div class="kachel">
@@ -58,9 +67,9 @@
     <tbody>
       {% for b in letzte_buchungen %}
       <tr>
-        <td class="t-datum">{{ b.datum }}</td>
+        <td class="t-datum">{{ b.datum|datum_de }}</td>
         <td class="t-person">{{ b.person }}</td>
-        <td class="t-kategorie">{{ b.kategorie }}</td>
+        <td class="t-kategorie">{{ kicon(b.kategorie) }} {{ b.kategorie }}</td>
         <td class="t-beschreibung">{{ b.beschreibung or "–" }}</td>
         <td class="t-betrag rechts {{ 'plus' if b.art == 'einnahme' else 'minus' }}">
           {{ '+' if b.art == 'einnahme' else '−' }}{{ b.betrag_cent|euro }}

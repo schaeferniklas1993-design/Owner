@@ -3,13 +3,15 @@
 Start:  python3 app.py   →  http://localhost:5000
 Zwei Zugänge: niklas / maeuschen (Startpasswörter siehe README).
 """
+import csv
 import datetime
 import functools
+import io
 import os
 import secrets
 
-from flask import (Flask, abort, flash, g, redirect, render_template, request,
-                   session, url_for)
+from flask import (Flask, Response, abort, flash, g, redirect, render_template,
+                   request, session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import database
@@ -17,6 +19,24 @@ from database import cent, euro
 
 MONATSNAMEN = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli",
                "August", "September", "Oktober", "November", "Dezember"]
+
+KATEGORIE_ICONS = {
+    # Einnahmen
+    "Gehalt": "💼", "Nebeneinkünfte": "🪙", "Rückerstattung": "💸",
+    "Geschenk": "🎁", "Sonstige Einnahme": "✨",
+    # Ausgaben
+    "Miete": "🏠", "Nebenkosten": "💡", "Lebensmittel": "🛒",
+    "Versicherungen": "🛡️", "Mobilität": "🚗", "Gesundheit": "💊",
+    "Kleidung": "👕", "Freizeit": "⚽", "Restaurant & Café": "🍽️",
+    "Abos & Medien": "📺", "Haushalt": "🧺", "Sparen & Rücklagen": "🏦",
+    "Sonstige Ausgabe": "📦",
+}
+
+
+def datum_de(iso: str) -> str:
+    """ISO-Datum als deutsche Schreibweise: 2026-07-07 -> 07.07.2026."""
+    jahr, monat, tag = iso[:10].split("-")
+    return f"{tag}.{monat}.{jahr}"
 
 
 def _secret_key() -> str:
@@ -40,6 +60,8 @@ if os.environ.get("BUDGET_HTTPS") == "1":
     app.config.update(SESSION_COOKIE_SECURE=True, PREFERRED_URL_SCHEME="https")
 
 app.jinja_env.globals["csrf_token"] = lambda: session.get("csrf_token", "")
+app.jinja_env.globals["kicon"] = lambda name: KATEGORIE_ICONS.get(name, "•")
+app.jinja_env.filters["datum_de"] = datum_de
 
 
 def _client_ip() -> str:
@@ -229,9 +251,25 @@ def dashboard():
             "ausgabe": werte["ausgabe"] / 100,
         })
 
+    # Vergleich mit dem Vormonat für die Kacheln.
+    vormonat_summen = {"einnahme": 0, "ausgabe": 0}
+    for zeile in g.db.execute(
+        "SELECT art, SUM(betrag_cent) AS summe FROM buchungen"
+        " WHERE strftime('%Y-%m', datum) = ? GROUP BY art",
+        (_monat_verschieben(jahr, monat, -1),),
+    ):
+        vormonat_summen[zeile["art"]] = zeile["summe"]
+    vergleich = {
+        "einnahme": summen["einnahme"] - vormonat_summen["einnahme"],
+        "ausgabe": summen["ausgabe"] - vormonat_summen["ausgabe"],
+        "saldo": (summen["einnahme"] - summen["ausgabe"])
+        - (vormonat_summen["einnahme"] - vormonat_summen["ausgabe"]),
+    }
+
     # Ausgaben nach Kategorie für das Ringdiagramm.
     kategorien_summen = [
-        {"name": zeile["name"], "wert": zeile["summe"] / 100}
+        {"name": f"{KATEGORIE_ICONS.get(zeile['name'], '•')} {zeile['name']}",
+         "wert": zeile["summe"] / 100}
         for zeile in g.db.execute(
             """SELECT k.name, SUM(b.betrag_cent) AS summe
                FROM buchungen b JOIN kategorien k ON k.id = b.kategorie_id
@@ -260,6 +298,7 @@ def dashboard():
         einnahmen=summen["einnahme"],
         ausgaben=summen["ausgabe"],
         saldo=summen["einnahme"] - summen["ausgabe"],
+        vergleich=vergleich,
         pro_person=list(pro_person.values()),
         verlauf=verlauf,
         kategorien_summen=kategorien_summen,
@@ -311,6 +350,28 @@ def buchungen():
         parameter.append(person_filter)
     sql += " ORDER BY b.datum DESC, b.id DESC"
     zeilen = g.db.execute(sql, parameter).fetchall()
+
+    # CSV-Export der aktuellen Auswahl, z. B. für Excel oder die Steuer.
+    if request.args.get("export") == "csv":
+        puffer = io.StringIO()
+        schreiber = csv.writer(puffer, delimiter=";")
+        schreiber.writerow(["Datum", "Person", "Art", "Kategorie", "Beschreibung", "Betrag in Euro"])
+        for b in zeilen:
+            betrag = b["betrag_cent"] / 100
+            if b["art"] == "ausgabe":
+                betrag = -betrag
+            schreiber.writerow([
+                datum_de(b["datum"]), b["person"],
+                "Einnahme" if b["art"] == "einnahme" else "Ausgabe",
+                b["kategorie"], b["beschreibung"],
+                f"{betrag:.2f}".replace(".", ","),
+            ])
+        # BOM voranstellen, damit Excel die Umlaute korrekt erkennt.
+        antwort = Response("\ufeff" + puffer.getvalue(), mimetype="text/csv; charset=utf-8")
+        antwort.headers["Content-Disposition"] = (
+            f"attachment; filename=haushaltsbuch-{monat_key}.csv"
+        )
+        return antwort
 
     return render_template(
         "buchungen.html",

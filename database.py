@@ -121,6 +121,10 @@ def init_db() -> None:
             "UPDATE dauerauftraege SET beschreibung = 'Gehalt Mäuschen'"
             " WHERE beschreibung = 'Gehalt Partnerin'"
         )
+        conn.execute(
+            "UPDATE buchungen SET beschreibung = 'Gehalt Mäuschen'"
+            " WHERE beschreibung = 'Gehalt Partnerin'"
+        )
 
         if conn.execute("SELECT COUNT(*) AS n FROM benutzer").fetchone()["n"] == 0:
             for benutzername, anzeigename, passwort, gehaltstag in STANDARD_BENUTZER:
