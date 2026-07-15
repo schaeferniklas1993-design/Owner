@@ -71,6 +71,28 @@ CREATE INDEX IF NOT EXISTS idx_login_versuche_zeit ON login_versuche(zeit);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_dauerauftrag_monat
     ON buchungen(dauerauftrag_id, strftime('%Y-%m', datum))
     WHERE dauerauftrag_id IS NOT NULL;
+
+-- Gemeinsame Sparziele (Sparkonto), z. B. Urlaub oder Hauskauf.
+CREATE TABLE IF NOT EXISTS sparziele (
+    id             INTEGER PRIMARY KEY,
+    name           TEXT NOT NULL,
+    icon           TEXT NOT NULL DEFAULT '🎯',
+    zielbetrag_cent INTEGER NOT NULL DEFAULT 0,   -- 0 = kein festes Ziel
+    aktiv          INTEGER NOT NULL DEFAULT 1,
+    erstellt_am    TEXT NOT NULL DEFAULT (date('now'))
+);
+
+-- Ein- und Auszahlungen auf ein Sparziel (positiv = Einzahlung, negativ = Entnahme).
+CREATE TABLE IF NOT EXISTS spar_bewegungen (
+    id           INTEGER PRIMARY KEY,
+    sparziel_id  INTEGER NOT NULL REFERENCES sparziele(id),
+    benutzer_id  INTEGER NOT NULL REFERENCES benutzer(id),
+    betrag_cent  INTEGER NOT NULL,
+    beschreibung TEXT NOT NULL DEFAULT '',
+    datum        TEXT NOT NULL,
+    erstellt_am  TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_spar_bewegungen_ziel ON spar_bewegungen(sparziel_id);
 """
 
 # Die beiden Zugänge des Haushalts. Die Startpasswörter gelten nur für den
@@ -165,6 +187,18 @@ def init_db() -> None:
                     (zeile["id"], gehalt, f"Gehalt {zeile['anzeigename']}", zeile["gehaltstag"]),
                 )
 
+        # Ein paar Sparziele als Startvorlage (nur beim allerersten Anlegen).
+        if conn.execute("SELECT COUNT(*) AS n FROM sparziele").fetchone()["n"] == 0:
+            for name, icon, ziel in [
+                ("Urlaub", "🏖️", 0),
+                ("Eigenes Haus", "🏡", 0),
+                ("Notgroschen", "🛟", 0),
+            ]:
+                conn.execute(
+                    "INSERT INTO sparziele (name, icon, zielbetrag_cent) VALUES (?, ?, ?)",
+                    (name, icon, ziel),
+                )
+
         conn.commit()
     finally:
         conn.close()
@@ -225,10 +259,24 @@ def cent(betrag: str) -> int:
 
 
 def cent_signed(betrag: str) -> int:
-    """Wie cent(), erlaubt aber auch 0 und negative Werte (z. B. Kontostand)."""
+    """Wie cent(), erlaubt aber auch 0 und negative Werte (z. B. Kontostand).
+
+    Versteht deutsche und englische Schreibweisen:
+      '1.234,56' -> 123456   '1234.56' -> 123456   '5.000' -> 500000
+      '1234'     -> 123400    '-120,50' -> -12050
+    """
     text = str(betrag).strip().replace("€", "").replace(" ", "")
     if "," in text:
+        # Deutsch: Punkt ist Tausender-Trenner, Komma das Dezimalzeichen.
         text = text.replace(".", "").replace(",", ".")
+    elif text.count(".") > 1:
+        # Mehrere Punkte -> alle sind Tausender-Trenner (z. B. 1.234.567).
+        text = text.replace(".", "")
+    elif "." in text:
+        # Ein Punkt ohne Komma: 3 Nachkommastellen = Tausender (5.000),
+        # sonst Dezimalpunkt (1234.56).
+        if len(text.rsplit(".", 1)[1]) == 3:
+            text = text.replace(".", "")
     return round(float(text) * 100)
 
 
