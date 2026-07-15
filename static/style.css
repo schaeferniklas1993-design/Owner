@@ -104,6 +104,39 @@ a { color: var(--akzent); }
 }
 .kachel-link:hover { text-decoration: underline; }
 
+/* Sparziele */
+.spar-gesamt { color: var(--tinte-2); font-size: 0.95rem; }
+.spar-gesamt strong { color: var(--gut); }
+.spar-kopf {
+  display: flex; align-items: baseline; justify-content: space-between;
+  flex-wrap: wrap; gap: 0.5rem;
+}
+.spar-kopf h2 { margin: 0; }
+.spar-stand { font-size: 1.15rem; font-weight: 700; }
+.spar-von { color: var(--tinte-3); font-weight: 400; font-size: 0.9rem; margin-left: 0.3rem; }
+.fortschritt {
+  height: 12px; border-radius: 999px; background: var(--linie);
+  overflow: hidden; margin: 0.75rem 0 0.35rem;
+}
+.fortschritt-fuellung {
+  height: 100%; border-radius: 999px; background: var(--akzent);
+  transition: width 0.4s ease;
+}
+.fortschritt-text { color: var(--tinte-2); font-size: 0.85rem; margin-bottom: 0.6rem; }
+.spar-aktionen { display: flex; flex-wrap: wrap; gap: 0.75rem; margin: 0.6rem 0; }
+.spar-aktionen .inline-formular { flex-wrap: wrap; gap: 0.4rem; }
+.knopf-grau { background: var(--tinte-3); }
+.spar-verlauf { margin-top: 0.6rem; }
+.spar-verlauf td { padding: 0.35rem 0.5rem; font-size: 0.9rem; }
+.spar-details { margin-top: 0.5rem; }
+.spar-details summary {
+  cursor: pointer; color: var(--tinte-3); font-size: 0.85rem; user-select: none;
+}
+.spar-bearbeiten {
+  display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.6rem;
+  align-items: center;
+}
+
 /* Karten & Diagramme */
 .karte {
   background: var(--karte); border: 1px solid var(--rand);

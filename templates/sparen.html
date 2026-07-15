@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block titel %}Sparziele – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <h1>Sparziele</h1>
+  <div class="spar-gesamt">Gespart insgesamt: <strong>{{ gesamt|euro }}</strong></div>
+</div>
+
+<p class="seiten-hinweis">
+  Euer gemeinsames Sparkonto – legt Ziele wie Urlaub oder Haus an, zahlt ein und
+  seht, wie ihr vorankommt. Die Sparbeträge sind unabhängig vom monatlichen
+  Haushaltsbuch, damit sich nichts doppelt zählt.
+</p>
+
+{% for z in ziele %}
+<section class="karte spar-karte">
+  <div class="spar-kopf">
+    <h2>{{ z.icon }} {{ z.name }}</h2>
+    <div class="spar-stand">
+      <span class="{{ 'plus' if z.stand >= 0 else 'minus' }}">{{ z.stand|euro }}</span>
+      {% if z.ziel %}<span class="spar-von">von {{ z.ziel|euro }}</span>{% endif %}
+    </div>
+  </div>
+
+  {% if z.prozent is not none %}
+  <div class="fortschritt" title="{{ z.prozent }} %">
+    <div class="fortschritt-fuellung" style="width: {{ [z.prozent, 100]|min }}%"></div>
+  </div>
+  <div class="fortschritt-text">
+    {{ z.prozent }} % erreicht
+    {% if z.rest > 0 %}· noch {{ z.rest|euro }}{% else %}· Ziel erreicht! 🎉{% endif %}
+  </div>
+  {% endif %}
+
+  <div class="spar-aktionen">
+    <form class="inline-formular" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="aktion" value="einzahlen">
+      <input type="hidden" name="id" value="{{ z.id }}">
+      <input class="betrag-eingabe" name="betrag" inputmode="decimal" placeholder="Betrag €" required>
+      <input name="beschreibung" placeholder="Notiz (optional)">
+      <button class="knopf-klein" type="submit">Einzahlen</button>
+    </form>
+    <form class="inline-formular" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="aktion" value="entnehmen">
+      <input type="hidden" name="id" value="{{ z.id }}">
+      <input class="betrag-eingabe" name="betrag" inputmode="decimal" placeholder="Betrag €" required>
+      <button class="knopf-klein knopf-grau" type="submit">Entnehmen</button>
+    </form>
+  </div>
+
+  {% if z.letzte %}
+  <table class="tabelle spar-verlauf">
+    <tbody>
+      {% for b in z.letzte %}
+      <tr>
+        <td>{{ b.datum|datum_de }}</td>
+        <td>{{ b.person }}</td>
+        <td>{{ b.beschreibung or "–" }}</td>
+        <td class="rechts {{ 'plus' if b.betrag_cent >= 0 else 'minus' }}">
+          {{ '+' if b.betrag_cent >= 0 else '−' }}{{ b.betrag_cent|abs|euro }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <details class="spar-details">
+    <summary>Ziel bearbeiten</summary>
+    <div class="spar-bearbeiten">
+      <form class="inline-formular" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="aktion" value="ziel">
+        <input type="hidden" name="id" value="{{ z.id }}">
+        <input class="betrag-eingabe" name="zielbetrag"
+               value="{{ '%.2f'|format(z.ziel / 100)|replace('.', ',') if z.ziel else '' }}"
+               inputmode="decimal" placeholder="Zielbetrag € (0 = kein Ziel)">
+        <button class="knopf-klein" type="submit">Ziel speichern</button>
+      </form>
+      <form class="inline-formular" method="post"
+            onsubmit="return confirm('Dieses Sparziel samt Verlauf wirklich löschen?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="aktion" value="loeschen">
+        <input type="hidden" name="id" value="{{ z.id }}">
+        <button class="knopf-loeschen" type="submit">Sparziel löschen ✕</button>
+      </form>
+    </div>
+  </details>
+</section>
+{% else %}
+<p class="leer-hinweis">Noch keine Sparziele. Lege unten das erste an.</p>
+{% endfor %}
+
+<section class="karte">
+  <h2>Neues Sparziel</h2>
+  <form class="buchung-formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="neu">
+    <label>Symbol
+      <select name="icon">
+        <option value="🏖️">🏖️ Urlaub</option>
+        <option value="🏡">🏡 Haus</option>
+        <option value="🚗">🚗 Auto</option>
+        <option value="🛟">🛟 Notgroschen</option>
+        <option value="💍">💍 Hochzeit</option>
+        <option value="🎓">🎓 Ausbildung</option>
+        <option value="🎁">🎁 Geschenk</option>
+        <option value="🎯">🎯 Sonstiges</option>
+      </select>
+    </label>
+    <label>Name
+      <input name="name" required placeholder="z. B. Urlaub 2027">
+    </label>
+    <label>Zielbetrag (€) <span class="feld-hinweis">optional</span>
+      <input name="zielbetrag" inputmode="decimal" placeholder="z. B. 5.000">
+    </label>
+    <button type="submit">Anlegen</button>
+  </form>
+</section>
+{% endblock %}

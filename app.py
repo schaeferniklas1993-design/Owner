@@ -235,6 +235,79 @@ def konto():
     return render_template("konto.html", personen=personen)
 
 
+def _sparziel_stand(sparziel_id: int) -> int:
+    return g.db.execute(
+        "SELECT COALESCE(SUM(betrag_cent), 0) AS s FROM spar_bewegungen WHERE sparziel_id = ?",
+        (sparziel_id,),
+    ).fetchone()["s"]
+
+
+@app.route("/sparen", methods=["GET", "POST"])
+@anmeldung_erforderlich
+def sparen():
+    """Gemeinsame Sparziele (Sparkonto) für Urlaub, Haus & Co."""
+    if request.method == "POST":
+        aktion = request.form.get("aktion")
+        try:
+            if aktion == "neu":
+                name = request.form["name"].strip()
+                if not name:
+                    raise ValueError("Bitte einen Namen angeben.")
+                ziel = database.cent_signed(request.form.get("zielbetrag") or "0")
+                g.db.execute(
+                    "INSERT INTO sparziele (name, icon, zielbetrag_cent) VALUES (?, ?, ?)",
+                    (name, (request.form.get("icon") or "🎯").strip()[:4], max(0, ziel)),
+                )
+                flash("Sparziel angelegt.", "ok")
+            elif aktion in ("einzahlen", "entnehmen"):
+                betrag = database.cent(request.form["betrag"])
+                if aktion == "entnehmen":
+                    betrag = -betrag
+                g.db.execute(
+                    "INSERT INTO spar_bewegungen (sparziel_id, benutzer_id, betrag_cent,"
+                    " beschreibung, datum) VALUES (?, ?, ?, ?, ?)",
+                    (request.form["id"], g.benutzer["id"], betrag,
+                     request.form.get("beschreibung", "").strip(),
+                     datetime.date.today().isoformat()),
+                )
+                flash("Einzahlung gespeichert." if betrag > 0 else "Entnahme gespeichert.", "ok")
+            elif aktion == "ziel":
+                g.db.execute(
+                    "UPDATE sparziele SET zielbetrag_cent = ? WHERE id = ?",
+                    (max(0, database.cent_signed(request.form.get("zielbetrag") or "0")),
+                     request.form["id"]),
+                )
+                flash("Zielbetrag aktualisiert.", "ok")
+            elif aktion == "loeschen":
+                g.db.execute("DELETE FROM spar_bewegungen WHERE sparziel_id = ?", (request.form["id"],))
+                g.db.execute("DELETE FROM sparziele WHERE id = ?", (request.form["id"],))
+                flash("Sparziel gelöscht.", "ok")
+            g.db.commit()
+        except (ValueError, KeyError) as e:
+            flash(f"Nicht gespeichert: {e}", "fehler")
+        return redirect(url_for("sparen"))
+
+    ziele = []
+    gesamt = 0
+    for z in g.db.execute("SELECT * FROM sparziele WHERE aktiv = 1 ORDER BY id"):
+        stand = _sparziel_stand(z["id"])
+        gesamt += stand
+        prozent = round(stand / z["zielbetrag_cent"] * 100) if z["zielbetrag_cent"] else None
+        letzte = g.db.execute(
+            """SELECT b.*, u.anzeigename AS person FROM spar_bewegungen b
+               JOIN benutzer u ON u.id = b.benutzer_id
+               WHERE b.sparziel_id = ? ORDER BY b.datum DESC, b.id DESC LIMIT 5""",
+            (z["id"],),
+        ).fetchall()
+        ziele.append({
+            "id": z["id"], "name": z["name"], "icon": z["icon"],
+            "ziel": z["zielbetrag_cent"], "stand": stand,
+            "prozent": prozent, "rest": max(0, z["zielbetrag_cent"] - stand),
+            "letzte": letzte,
+        })
+    return render_template("sparen.html", ziele=ziele, gesamt=gesamt)
+
+
 def _monat_aus_request() -> tuple[int, int]:
     heute = datetime.date.today()
     try:
