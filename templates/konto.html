@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block titel %}Kontostand – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf"><h1>Kontostand anpassen</h1></div>
+
+<p class="seiten-hinweis">
+  Hier stellst du deinen <strong>tatsächlichen Kontostand</strong> ein – ganz ohne
+  Buchung. Praktisch für den Start, wenn auf dem Konto nicht das volle Gehalt liegt,
+  oder um die App gelegentlich mit dem echten Konto abzugleichen.
+  Die Differenz wird als Startsaldo gespeichert; alle Buchungen bleiben unverändert.
+</p>
+
+<section class="kacheln">
+  {% for p in personen %}
+  <div class="kachel">
+    <div class="kachel-label">{{ p.name }} – aktueller Kontostand</div>
+    <div class="kachel-wert {{ 'plus' if p.kontostand >= 0 else 'minus' }}">{{ p.kontostand|euro }}</div>
+    {% if not p.eigene %}<div class="kachel-detail">kann nur {{ p.name }} selbst anpassen</div>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+
+<section class="karte">
+  <h2>Kontostand von {{ g.benutzer.anzeigename }} setzen</h2>
+  <form class="buchung-formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Tatsächlicher Kontostand (€) <span class="feld-hinweis">– auch negativ möglich</span>
+      <input name="kontostand" required inputmode="text" placeholder="z. B. 843,20">
+    </label>
+    <button type="submit">Kontostand speichern</button>
+  </form>
+  <p class="karten-hinweis" style="margin-top: 0.75rem;">
+    Beispiel: Dein Gehalt (2.450,00 €) wurde gebucht, aber auf dem Konto sind nur
+    1.800,00 €? Einfach <strong>1800</strong> eintragen – fertig.
+  </p>
+</section>
+{% endblock %}

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titel %}Haushaltsbuch{% endblock %}</title>
+  <!-- iPhone: „Zum Home-Bildschirm hinzufügen“ ergibt eine App mit Icon und Vollbild -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Haushaltsbuch">
+  <meta name="theme-color" content="#2a78d6">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if g.benutzer %}
+<header class="kopf">
+  <div class="kopf-innen">
+    <a class="marke" href="{{ url_for('dashboard') }}">💶 Haushaltsbuch</a>
+    <nav>
+      <a href="{{ url_for('dashboard') }}" class="{{ 'aktiv' if request.endpoint == 'dashboard' }}">Dashboard</a>
+      <a href="{{ url_for('buchungen') }}" class="{{ 'aktiv' if request.endpoint == 'buchungen' }}">Buchungen</a>
+      <a href="{{ url_for('dauerauftraege') }}" class="{{ 'aktiv' if request.endpoint == 'dauerauftraege' }}">Daueraufträge</a>
+      <a href="{{ url_for('passwort_aendern') }}" class="{{ 'aktiv' if request.endpoint == 'passwort_aendern' }}">Passwort</a>
+    </nav>
+    <div class="kopf-rechts">
+      <span class="person-chip person-{{ g.benutzer.benutzername }}">{{ g.benutzer.anzeigename }}</span>
+      <a class="abmelden" href="{{ url_for('logout') }}">Abmelden</a>
+    </div>
+  </div>
+</header>
+{% endif %}
+<main class="inhalt">
+  {% with meldungen = get_flashed_messages(with_categories=true) %}
+    {% for kategorie, text in meldungen %}
+      <div class="meldung meldung-{{ kategorie }}">{{ text }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block inhalt %}{% endblock %}
+</main>
+</body>
+</html>

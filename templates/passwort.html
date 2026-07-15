@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block titel %}Passwort wählen – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="login-buehne">
+  <form class="login-karte" method="post">
+    <div class="login-logo">🔑</div>
+    {% if erzwungen %}
+      <h1>Hallo {{ g.benutzer.anzeigename }}!</h1>
+      <p class="login-untertitel">
+        Willkommen im Haushaltsbuch. Wähle zuerst dein eigenes Passwort –
+        damit meldest du dich ab jetzt an.
+      </p>
+    {% else %}
+      <h1>Passwort ändern</h1>
+      <p class="login-untertitel">Wähle ein neues Passwort für {{ g.benutzer.anzeigename }}.</p>
+    {% endif %}
+
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {# Unsichtbares Feld, damit iPhone & Co. das Passwort dem richtigen Konto zuordnen #}
+    <input type="text" name="benutzername" value="{{ g.benutzer.benutzername }}"
+           autocomplete="username" readonly hidden>
+
+    {% if not erzwungen %}
+    <label>Aktuelles Passwort
+      <input type="password" name="aktuelles_passwort" autocomplete="current-password" required>
+    </label>
+    {% endif %}
+    <label>Neues Passwort <span class="feld-hinweis">(mindestens 8 Zeichen)</span>
+      <input type="password" name="neues_passwort" autocomplete="new-password"
+             minlength="8" required autofocus>
+    </label>
+    <label>Neues Passwort wiederholen
+      <input type="password" name="wiederholung" autocomplete="new-password"
+             minlength="8" required>
+    </label>
+    <button type="submit">Passwort speichern</button>
+    <p class="login-untertitel">
+      💡 Dein iPhone fragt gleich, ob es das Passwort <strong>sichern</strong> soll –
+      mit „Ja“ musst du es nie wieder eintippen.
+    </p>
+  </form>
+</div>
+{% endblock %}

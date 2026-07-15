@@ -1,0 +1,9 @@
+# Caddy-Konfiguration: HTTPS-Zugang zum Haushaltsbuch.
+# Den Platzhalter durch eure eigene (DuckDNS-)Adresse ersetzen und
+# nach /etc/caddy/Caddyfile kopieren, dann:  sudo systemctl reload caddy
+#
+# Caddy besorgt und erneuert das HTTPS-Zertifikat (Let's Encrypt) automatisch.
+
+haushalt-mustermann.duckdns.org {
+    reverse_proxy 127.0.0.1:8000
+}
