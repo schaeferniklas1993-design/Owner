@@ -157,15 +157,26 @@ startet im Vollbild und ihr seht beide dieselben Daten – live.
 
 ## Später: App aktualisieren
 
-Wenn es eine neue Version gibt, per SSH einloggen und:
+Wenn es eine neue Version gibt, per SSH einloggen und **beide** Befehle ausführen:
 
 ```bash
 cd ~/haushaltsbuch && git pull
 sudo bash deploy/server-setup.sh haushalt-niklas.duckdns.org
-sudo systemctl restart haushaltsbuch
 ```
 
-(Das Skript ist wiederholbar – Datenbank und Passwörter bleiben erhalten.)
+**Wichtig – der zweite Befehl ist Pflicht, nicht optional:** Der Klon liegt in
+`~/haushaltsbuch`, die *laufende* App aber in `/opt/haushaltsbuch`. `git pull`
+allein aktualisiert nur den Klon; erst das Setup-Skript kopiert die neuen Dateien
+nach `/opt`, führt die Datenbank-Migration aus und startet den Dienst neu. Ein
+bloßes `git pull && systemctl restart` lädt weiterhin die alte Version.
+
+(Das Skript ist wiederholbar – Datenbank, Passwörter und Buchungen bleiben
+erhalten, weil die Datenbank separat in `/opt/haushaltsbuch` liegt und nicht
+überschrieben wird.)
+
+Danach im Browser einmal hart neu laden (**Strg+Shift+R**) bzw. die
+Home-Bildschirm-App komplett schließen und neu öffnen, sonst zeigt der
+Browser-Zwischenspeicher noch die alte Ansicht.
 
 ## Wenn etwas nicht läuft
 
