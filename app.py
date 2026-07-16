@@ -62,10 +62,15 @@ def _secret_key() -> str:
         return f.read().strip()
 
 
+# Sichtbare Versionsnummer – erscheint unten in der App. So lässt sich prüfen,
+# ob nach einem Update wirklich der neue Stand läuft.
+VERSION = "2026.07.16-6 · Löschen repariert, Fixkosten, Grundbedarf"
+
 app = Flask(__name__)
 database.init_db()
 app.secret_key = _secret_key()
 app.jinja_env.filters["euro"] = euro
+app.jinja_env.globals["app_version"] = VERSION
 
 # Auf einem öffentlichen Server (hinter HTTPS) mit BUDGET_HTTPS=1 starten:
 # Session-Cookies werden dann nur noch verschlüsselt übertragen.
@@ -564,11 +569,15 @@ def buchungen():
 @app.route("/buchungen/<int:buchung_id>/loeschen", methods=["POST"])
 @anmeldung_erforderlich
 def buchung_loeschen(buchung_id: int):
-    geloescht = g.db.execute("DELETE FROM buchungen WHERE id = ?", (buchung_id,)).rowcount
-    g.db.commit()
-    if not geloescht:
-        abort(404)
-    flash("Buchung gelöscht.", "ok")
+    try:
+        geloescht = g.db.execute(
+            "DELETE FROM buchungen WHERE id = ?", (buchung_id,)
+        ).rowcount
+        g.db.commit()
+        flash("Buchung gelöscht." if geloescht else "Buchung war bereits gelöscht.", "ok")
+    except sqlite3.Error as e:
+        g.db.rollback()
+        flash(f"Buchung konnte nicht gelöscht werden: {e}", "fehler")
     return redirect(request.referrer or url_for("buchungen"))
 
 

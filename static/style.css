@@ -104,6 +104,12 @@ a { color: var(--akzent); }
 }
 .kachel-link:hover { text-decoration: underline; }
 
+/* Versions-Fußzeile */
+.fuss {
+  max-width: 1080px; margin: 0 auto; padding: 1.5rem 1.25rem 2rem;
+  color: var(--tinte-3); font-size: 0.78rem; text-align: center;
+}
+
 /* Fixkosten-Zeile auf dem Dashboard */
 .fixkosten-reihe {
   display: flex; flex-wrap: wrap; gap: 0.75rem;

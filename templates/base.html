@@ -41,5 +41,8 @@
   {% endwith %}
   {% block inhalt %}{% endblock %}
 </main>
+{% if g.benutzer %}
+<footer class="fuss">Haushaltsbuch · Version {{ app_version }}</footer>
+{% endif %}
 </body>
 </html>
