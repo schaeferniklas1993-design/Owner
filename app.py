@@ -9,6 +9,7 @@ import functools
 import io
 import os
 import secrets
+import sqlite3
 
 from flask import (Flask, Response, abort, flash, g, redirect, render_template,
                    request, session, url_for)
@@ -34,6 +35,14 @@ KATEGORIE_ICONS = {
     "Kinder": "🧸", "Haustiere": "🐾", "Geschenke": "🎁", "Bildung": "🎓",
     "Spenden": "❤️", "Steuern & Gebühren": "🧾", "Sparen & Rücklagen": "🏦",
     "Sonstige Ausgabe": "📦",
+}
+
+
+# Lebensnotwendige Ausgaben (Grundbedarf) – eigene Gruppe im Kategorie-Menü.
+GRUNDBEDARF = {
+    "Miete", "Nebenkosten", "Lebensmittel", "Handy & Internet",
+    "Versicherungen", "Gesundheit", "Mobilität", "Kredite & Raten",
+    "Steuern & Gebühren",
 }
 
 
@@ -66,6 +75,23 @@ if os.environ.get("BUDGET_HTTPS") == "1":
 app.jinja_env.globals["csrf_token"] = lambda: session.get("csrf_token", "")
 app.jinja_env.globals["kicon"] = lambda name: KATEGORIE_ICONS.get(name, "•")
 app.jinja_env.filters["datum_de"] = datum_de
+
+
+def kategorie_gruppen(kategorien):
+    """Teilt Kategorien für das Dropdown in Gruppen auf:
+    Einnahmen, lebensnotwendige Ausgaben (Grundbedarf) und weitere Ausgaben."""
+    gruppen = {"einnahme": [], "grundbedarf": [], "sonstige": []}
+    for k in kategorien:
+        if k["art"] == "einnahme":
+            gruppen["einnahme"].append(k)
+        elif k["name"] in GRUNDBEDARF:
+            gruppen["grundbedarf"].append(k)
+        else:
+            gruppen["sonstige"].append(k)
+    return gruppen
+
+
+app.jinja_env.globals["kategorie_gruppen"] = kategorie_gruppen
 
 
 def _client_ip() -> str:
@@ -379,6 +405,24 @@ def dashboard():
             "ausgabe": werte["ausgabe"] / 100,
         })
 
+    # Fixkosten aus aktiven Ausgabe-Daueraufträgen, auf einen Monat umgerechnet
+    # (z. B. jährlich 300 € = 25 €/Monat), pro Person und zusammen.
+    fixkosten = {"gesamt": 0}
+    person_namen = {}
+    for u in g.db.execute("SELECT id, anzeigename FROM benutzer ORDER BY id"):
+        fixkosten[u["id"]] = 0
+        person_namen[u["id"]] = u["anzeigename"]
+    for da in g.db.execute(
+        "SELECT benutzer_id, betrag_cent, intervall_monate FROM dauerauftraege"
+        " WHERE art = 'ausgabe' AND aktiv = 1 AND betrag_cent > 0"
+    ):
+        monatlich = round(da["betrag_cent"] / (da["intervall_monate"] or 1))
+        fixkosten[da["benutzer_id"]] = fixkosten.get(da["benutzer_id"], 0) + monatlich
+        fixkosten["gesamt"] += monatlich
+    fixkosten_liste = [
+        {"name": name, "wert": fixkosten[uid]} for uid, name in person_namen.items()
+    ]
+
     # Vergleich mit dem Vormonat für die Kacheln.
     vormonat_summen = {"einnahme": 0, "ausgabe": 0}
     for zeile in g.db.execute(
@@ -427,6 +471,8 @@ def dashboard():
         ausgaben=summen["ausgabe"],
         saldo=summen["einnahme"] - summen["ausgabe"],
         vergleich=vergleich,
+        fixkosten_liste=fixkosten_liste,
+        fixkosten_gesamt=fixkosten["gesamt"],
         pro_person=list(pro_person.values()),
         verlauf=verlauf,
         kategorien_summen=kategorien_summen,
@@ -606,10 +652,15 @@ def dauerauftraege():
                     (request.form["id"],),
                 )
             elif aktion == "loeschen":
-                g.db.execute("DELETE FROM dauerauftraege WHERE id = ?", (request.form["id"],))
-                flash("Dauerauftrag gelöscht.", "ok")
+                # Zuerst die vom Dauerauftrag automatisch erzeugten Buchungen entfernen,
+                # sonst verhindert die Fremdschlüssel-Beziehung das Löschen (Fehlerseite).
+                da_id = request.form["id"]
+                g.db.execute("DELETE FROM buchungen WHERE dauerauftrag_id = ?", (da_id,))
+                g.db.execute("DELETE FROM dauerauftraege WHERE id = ?", (da_id,))
+                flash("Dauerauftrag und zugehörige automatische Buchungen gelöscht.", "ok")
             g.db.commit()
-        except (ValueError, KeyError) as e:
+        except (ValueError, KeyError, sqlite3.Error) as e:
+            g.db.rollback()
             flash(f"Nicht gespeichert: {e}", "fehler")
         return redirect(url_for("dauerauftraege"))
 

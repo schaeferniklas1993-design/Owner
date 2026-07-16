@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_makros.html" import kategorie_select %}
 {% block titel %}Daueraufträge – Haushaltsbuch{% endblock %}
 {% block inhalt %}
 <div class="seitenkopf"><h1>Daueraufträge</h1></div>
@@ -81,11 +82,7 @@
       <input name="betrag" required inputmode="decimal" placeholder="z. B. 890,00">
     </label>
     <label>Kategorie
-      <select name="kategorie_id" id="kategorie-auswahl">
-        {% for k in kategorien %}
-        <option value="{{ k.id }}" data-art="{{ k.art }}">{{ kicon(k.name) }} {{ k.name }}</option>
-        {% endfor %}
-      </select>
+      {{ kategorie_select(kategorien) }}
     </label>
     <label>Rhythmus
       <select name="intervall" id="intervall-auswahl">
@@ -111,22 +108,8 @@
   </form>
 </section>
 
+<script src="{{ url_for('static', filename='formular.js') }}"></script>
 <script>
-  const artAuswahl = document.getElementById("art-auswahl");
-  const kategorieAuswahl = document.getElementById("kategorie-auswahl");
-  function kategorienFiltern() {
-    let erste = null;
-    for (const option of kategorieAuswahl.options) {
-      const passt = option.dataset.art === artAuswahl.value;
-      option.hidden = !passt;
-      option.disabled = !passt;
-      if (passt && erste === null) erste = option;
-    }
-    if (kategorieAuswahl.selectedOptions[0]?.disabled && erste) erste.selected = true;
-  }
-  artAuswahl.addEventListener("change", kategorienFiltern);
-  kategorienFiltern();
-
   // Der "Erster Monat" ist nur bei nicht-monatlichem Rhythmus sinnvoll.
   const intervallAuswahl = document.getElementById("intervall-auswahl");
   const startmonatFeld = document.getElementById("startmonat-feld");

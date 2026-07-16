@@ -44,6 +44,25 @@
   {% endfor %}
 </section>
 
+<section class="karte fixkosten-karte">
+  <div class="karten-kopf">
+    <h2>🔁 Daueraufträge – Fixkosten pro Monat</h2>
+    <span class="karten-hinweis">nicht-monatliche anteilig (z. B. jährlich ÷ 12)</span>
+  </div>
+  <div class="fixkosten-reihe">
+    {% for f in fixkosten_liste %}
+    <div class="fixkosten-posten">
+      <div class="fixkosten-label">{{ f.name }}</div>
+      <div class="fixkosten-wert minus">{{ f.wert|euro }}</div>
+    </div>
+    {% endfor %}
+    <div class="fixkosten-posten fixkosten-gesamt">
+      <div class="fixkosten-label">Zusammen</div>
+      <div class="fixkosten-wert minus">{{ fixkosten_gesamt|euro }}</div>
+    </div>
+  </div>
+</section>
+
 <section class="diagramm-reihe">
   <div class="karte">
     <h2>Einnahmen & Ausgaben – letzte 6 Monate</h2>

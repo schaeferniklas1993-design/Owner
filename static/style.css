@@ -104,6 +104,19 @@ a { color: var(--akzent); }
 }
 .kachel-link:hover { text-decoration: underline; }
 
+/* Fixkosten-Zeile auf dem Dashboard */
+.fixkosten-reihe {
+  display: flex; flex-wrap: wrap; gap: 0.75rem;
+}
+.fixkosten-posten {
+  flex: 1 1 8rem; min-width: 7rem;
+  border: 1px solid var(--linie); border-radius: 10px; padding: 0.6rem 0.8rem;
+}
+.fixkosten-posten.fixkosten-gesamt { border-color: var(--tinte-3); background: var(--flaeche); }
+.fixkosten-label { color: var(--tinte-2); font-size: 0.85rem; }
+.fixkosten-wert { font-size: 1.2rem; font-weight: 700; margin-top: 0.15rem; }
+optgroup { font-weight: 700; }
+
 /* Sparziele */
 .spar-gesamt { color: var(--tinte-2); font-size: 0.95rem; }
 .spar-gesamt strong { color: var(--gut); }

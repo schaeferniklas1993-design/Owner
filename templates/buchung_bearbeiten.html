@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_makros.html" import kategorie_select %}
 {% block titel %}Buchung bearbeiten – Haushaltsbuch{% endblock %}
 {% block inhalt %}
 <div class="seitenkopf">
@@ -20,13 +21,7 @@
              value="{{ '%.2f'|format(buchung.betrag_cent / 100)|replace('.', ',') }}">
     </label>
     <label>Kategorie
-      <select name="kategorie_id" id="kategorie-auswahl">
-        {% for k in kategorien %}
-        <option value="{{ k.id }}" data-art="{{ k.art }}" {{ 'selected' if k.id == buchung.kategorie_id }}>
-          {{ kicon(k.name) }} {{ k.name }}
-        </option>
-        {% endfor %}
-      </select>
+      {{ kategorie_select(kategorien, buchung.kategorie_id) }}
     </label>
     <label>Datum
       <input type="date" name="datum" value="{{ buchung.datum[:10] }}" required>
@@ -38,24 +33,5 @@
   </form>
 </section>
 
-<script>
-  const artAuswahl = document.getElementById("art-auswahl");
-  const kategorieAuswahl = document.getElementById("kategorie-auswahl");
-  function kategorienFiltern(erstesMal) {
-    let erste = null;
-    for (const option of kategorieAuswahl.options) {
-      const passt = option.dataset.art === artAuswahl.value;
-      option.hidden = !passt;
-      option.disabled = !passt;
-      if (passt && erste === null) erste = option;
-    }
-    if (kategorieAuswahl.selectedOptions[0]?.disabled && erste) erste.selected = true;
-  }
-  artAuswahl.addEventListener("change", kategorienFiltern);
-  // Beim ersten Laden nur ausblenden, aber die gespeicherte Kategorie behalten.
-  for (const option of kategorieAuswahl.options) {
-    const passt = option.dataset.art === artAuswahl.value;
-    option.hidden = !passt; option.disabled = !passt;
-  }
-</script>
+<script src="{{ url_for('static', filename='formular.js') }}"></script>
 {% endblock %}

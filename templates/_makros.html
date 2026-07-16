@@ -1,0 +1,22 @@
+{# Gruppiertes Kategorie-Auswahlmenü: Einnahmen, lebensnotwendige Ausgaben
+   (Grundbedarf) und weitere Ausgaben – jeweils als eigene Gruppe (optgroup). #}
+{% macro kategorie_select(kategorien, gewaehlt=None) %}
+{% set gruppen = kategorie_gruppen(kategorien) %}
+<select name="kategorie_id" id="kategorie-auswahl">
+  <optgroup label="Einnahmen" data-gruppe="einnahme">
+    {% for k in gruppen.einnahme %}
+    <option value="{{ k.id }}" data-art="einnahme" {{ 'selected' if k.id == gewaehlt }}>{{ kicon(k.name) }} {{ k.name }}</option>
+    {% endfor %}
+  </optgroup>
+  <optgroup label="🧺 Lebensnotwendig (Grundbedarf)" data-gruppe="ausgabe">
+    {% for k in gruppen.grundbedarf %}
+    <option value="{{ k.id }}" data-art="ausgabe" {{ 'selected' if k.id == gewaehlt }}>{{ kicon(k.name) }} {{ k.name }}</option>
+    {% endfor %}
+  </optgroup>
+  <optgroup label="Weitere Ausgaben" data-gruppe="ausgabe">
+    {% for k in gruppen.sonstige %}
+    <option value="{{ k.id }}" data-art="ausgabe" {{ 'selected' if k.id == gewaehlt }}>{{ kicon(k.name) }} {{ k.name }}</option>
+    {% endfor %}
+  </optgroup>
+</select>
+{% endmacro %}
