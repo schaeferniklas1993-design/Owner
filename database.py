@@ -31,15 +31,17 @@ CREATE TABLE IF NOT EXISTS kategorien (
 );
 
 CREATE TABLE IF NOT EXISTS dauerauftraege (
-    id           INTEGER PRIMARY KEY,
-    benutzer_id  INTEGER NOT NULL REFERENCES benutzer(id),
-    art          TEXT NOT NULL CHECK (art IN ('einnahme', 'ausgabe')),
-    kategorie_id INTEGER NOT NULL REFERENCES kategorien(id),
-    betrag_cent  INTEGER NOT NULL DEFAULT 0,
-    beschreibung TEXT NOT NULL,
-    monatstag    INTEGER NOT NULL CHECK (monatstag BETWEEN 1 AND 28),
-    aktiv        INTEGER NOT NULL DEFAULT 1,
-    erstellt_am  TEXT NOT NULL DEFAULT (date('now'))
+    id              INTEGER PRIMARY KEY,
+    benutzer_id     INTEGER NOT NULL REFERENCES benutzer(id),
+    art             TEXT NOT NULL CHECK (art IN ('einnahme', 'ausgabe')),
+    kategorie_id    INTEGER NOT NULL REFERENCES kategorien(id),
+    betrag_cent     INTEGER NOT NULL DEFAULT 0,
+    beschreibung    TEXT NOT NULL,
+    monatstag       INTEGER NOT NULL CHECK (monatstag BETWEEN 1 AND 28),
+    intervall_monate INTEGER NOT NULL DEFAULT 1,   -- 1=monatl., 3=viertelj., 6=halbj., 12=jährl.
+    startmonat      INTEGER NOT NULL DEFAULT 1,     -- Anker-Monat (1-12) für nicht-monatliche
+    aktiv           INTEGER NOT NULL DEFAULT 1,
+    erstellt_am     TEXT NOT NULL DEFAULT (date('now'))
 );
 
 CREATE TABLE IF NOT EXISTS buchungen (
@@ -120,6 +122,10 @@ STANDARD_KATEGORIEN = {
 }
 
 
+# Auswählbare Intervalle für Daueraufträge: Monate -> Bezeichnung.
+INTERVALLE = {1: "monatlich", 3: "vierteljährlich", 6: "halbjährlich", 12: "jährlich"}
+
+
 def verbinden() -> sqlite3.Connection:
     conn = sqlite3.connect(DB_PFAD)
     conn.row_factory = sqlite3.Row
@@ -144,6 +150,17 @@ def init_db() -> None:
         if "startsaldo_cent" not in spalten:
             conn.execute(
                 "ALTER TABLE benutzer ADD COLUMN startsaldo_cent INTEGER NOT NULL DEFAULT 0"
+            )
+
+        # Migration: Intervall für Daueraufträge (frühere Aufträge sind monatlich).
+        da_spalten = [z["name"] for z in conn.execute("PRAGMA table_info(dauerauftraege)")]
+        if "intervall_monate" not in da_spalten:
+            conn.execute(
+                "ALTER TABLE dauerauftraege ADD COLUMN intervall_monate INTEGER NOT NULL DEFAULT 1"
+            )
+        if "startmonat" not in da_spalten:
+            conn.execute(
+                "ALTER TABLE dauerauftraege ADD COLUMN startmonat INTEGER NOT NULL DEFAULT 1"
             )
 
         # Migration: Aus „Partnerin" wurde „Mäuschen" – Bestandsdaten umbenennen.
@@ -216,10 +233,15 @@ def dauerauftraege_ausfuehren(conn: sqlite3.Connection, heute: datetime.date | N
         "SELECT * FROM dauerauftraege WHERE aktiv = 1 AND betrag_cent > 0"
     ).fetchall():
         erstellt = datetime.date.fromisoformat(da["erstellt_am"][:10])
+        intervall = da["intervall_monate"] or 1
+        startmonat = da["startmonat"] or 1
         jahr, monat = heute.year, heute.month
-        for _ in range(12):
+        # 14 Monate zurückschauen, damit auch jährliche Aufträge sicher greifen.
+        for _ in range(14):
             faellig = datetime.date(jahr, monat, da["monatstag"])
-            if faellig <= heute and faellig >= erstellt.replace(day=1):
+            # Nur in Monaten fällig, die zum Intervall passen (Phase über startmonat).
+            passt_intervall = (monat - startmonat) % intervall == 0
+            if passt_intervall and faellig <= heute and faellig >= erstellt.replace(day=1):
                 vorhanden = conn.execute(
                     "SELECT 1 FROM buchungen WHERE dauerauftrag_id = ?"
                     " AND strftime('%Y-%m', datum) = ?",

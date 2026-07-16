@@ -4,21 +4,25 @@
 <div class="seitenkopf"><h1>Daueraufträge</h1></div>
 
 <p class="seiten-hinweis">
-  Daueraufträge werden automatisch jeden Monat am eingestellten Tag gebucht –
-  zum Beispiel das Gehalt von Niklas am 15. und das der Mäuschen am 1.
-  Ein Gehalt mit Betrag 0,00 € ist noch nicht eingerichtet: Betrag eintragen und speichern, dann läuft es.
+  Daueraufträge werden automatisch gebucht – monatlich, vierteljährlich, halbjährlich
+  oder jährlich, jeweils am eingestellten Tag. Zum Beispiel das Gehalt von Niklas am 15.
+  und das der Mäuschen am 1. Ein Gehalt mit Betrag 0,00 € ist noch nicht eingerichtet:
+  Betrag eintragen und speichern, dann läuft es.
 </p>
 
 <section class="karte">
   <h2>Eingerichtete Daueraufträge</h2>
   {% if dauerauftraege %}
   <table class="tabelle karten-tabelle da-karten">
-    <thead><tr><th>Person</th><th>Tag</th><th>Kategorie</th><th>Beschreibung</th><th class="rechts">Betrag</th><th>Status</th><th></th></tr></thead>
+    <thead><tr><th>Person</th><th>Rhythmus</th><th>Kategorie</th><th>Beschreibung</th><th class="rechts">Betrag</th><th>Status</th><th></th></tr></thead>
     <tbody>
       {% for d in dauerauftraege %}
       <tr>
         <td class="t-person">{{ d.person }}</td>
-        <td class="t-datum">{{ d.monatstag }}.</td>
+        <td class="t-datum">
+          {{ intervalle.get(d.intervall_monate, 'monatlich') }}, {{ d.monatstag }}.
+          {%- if d.intervall_monate and d.intervall_monate > 1 %} ab {{ monatsnamen[d.startmonat - 1][:3] }}{% endif %}
+        </td>
         <td class="t-kategorie">{{ kicon(d.kategorie) }} {{ d.kategorie }}</td>
         <td class="t-beschreibung">{{ d.beschreibung }}</td>
         <td class="t-betrag rechts">
@@ -43,6 +47,8 @@
           </form>
         </td>
         <td class="t-aktion rechts">
+          <a class="knopf-bearbeiten" href="{{ url_for('dauerauftrag_bearbeiten', auftrag_id=d.id) }}"
+             title="Dauerauftrag bearbeiten">✎</a>
           <form class="inline-formular" method="post"
                 onsubmit="return confirm('Diesen Dauerauftrag wirklich löschen?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -81,8 +87,22 @@
         {% endfor %}
       </select>
     </label>
+    <label>Rhythmus
+      <select name="intervall" id="intervall-auswahl">
+        {% for monate, text in intervalle.items() %}
+        <option value="{{ monate }}">{{ text|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </label>
     <label>Tag im Monat (1–28)
       <input type="number" name="monatstag" min="1" max="28" value="1" required>
+    </label>
+    <label id="startmonat-feld" style="display:none;">Erster Monat
+      <select name="startmonat">
+        {% for name in monatsnamen %}
+        <option value="{{ loop.index }}">{{ name }}</option>
+        {% endfor %}
+      </select>
     </label>
     <label class="breit">Beschreibung
       <input name="beschreibung" required placeholder="z. B. Miete Wohnung">
@@ -106,5 +126,14 @@
   }
   artAuswahl.addEventListener("change", kategorienFiltern);
   kategorienFiltern();
+
+  // Der "Erster Monat" ist nur bei nicht-monatlichem Rhythmus sinnvoll.
+  const intervallAuswahl = document.getElementById("intervall-auswahl");
+  const startmonatFeld = document.getElementById("startmonat-feld");
+  function startmonatUmschalten() {
+    startmonatFeld.style.display = intervallAuswahl.value === "1" ? "none" : "flex";
+  }
+  intervallAuswahl.addEventListener("change", startmonatUmschalten);
+  startmonatUmschalten();
 </script>
 {% endblock %}

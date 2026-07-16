@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block titel %}Dauerauftrag bearbeiten – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <h1>Dauerauftrag bearbeiten</h1>
+  <a class="knopf-sekundaer" href="{{ url_for('dauerauftraege') }}">Zurück</a>
+</div>
+
+<section class="karte">
+  <form class="buchung-formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Art
+      <select name="art" id="art-auswahl">
+        <option value="ausgabe" {{ 'selected' if auftrag.art == 'ausgabe' }}>Ausgabe</option>
+        <option value="einnahme" {{ 'selected' if auftrag.art == 'einnahme' }}>Einnahme</option>
+      </select>
+    </label>
+    <label>Betrag (€)
+      <input name="betrag" required inputmode="decimal"
+             value="{{ '%.2f'|format(auftrag.betrag_cent / 100)|replace('.', ',') }}">
+    </label>
+    <label>Kategorie
+      <select name="kategorie_id" id="kategorie-auswahl">
+        {% for k in kategorien %}
+        <option value="{{ k.id }}" data-art="{{ k.art }}" {{ 'selected' if k.id == auftrag.kategorie_id }}>
+          {{ kicon(k.name) }} {{ k.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Rhythmus
+      <select name="intervall" id="intervall-auswahl">
+        {% for monate, text in intervalle.items() %}
+        <option value="{{ monate }}" {{ 'selected' if monate == auftrag.intervall_monate }}>{{ text|capitalize }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Tag im Monat (1–28)
+      <input type="number" name="monatstag" min="1" max="28" value="{{ auftrag.monatstag }}" required>
+    </label>
+    <label id="startmonat-feld">Erster Monat
+      <select name="startmonat">
+        {% for name in monatsnamen %}
+        <option value="{{ loop.index }}" {{ 'selected' if loop.index == auftrag.startmonat }}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="breit">Beschreibung
+      <input name="beschreibung" required value="{{ auftrag.beschreibung }}">
+    </label>
+    <button type="submit">Änderungen speichern</button>
+  </form>
+</section>
+
+<script>
+  const artAuswahl = document.getElementById("art-auswahl");
+  const kategorieAuswahl = document.getElementById("kategorie-auswahl");
+  function kategorienAusblenden() {
+    let erste = null;
+    for (const option of kategorieAuswahl.options) {
+      const passt = option.dataset.art === artAuswahl.value;
+      option.hidden = !passt; option.disabled = !passt;
+      if (passt && erste === null) erste = option;
+    }
+    if (kategorieAuswahl.selectedOptions[0]?.disabled && erste) erste.selected = true;
+  }
+  artAuswahl.addEventListener("change", kategorienAusblenden);
+  // Beim Laden nur ausblenden, gespeicherte Kategorie behalten:
+  for (const option of kategorieAuswahl.options) {
+    const passt = option.dataset.art === artAuswahl.value;
+    option.hidden = !passt; option.disabled = !passt;
+  }
+
+  const intervallAuswahl = document.getElementById("intervall-auswahl");
+  const startmonatFeld = document.getElementById("startmonat-feld");
+  function startmonatUmschalten() {
+    startmonatFeld.style.display = intervallAuswahl.value === "1" ? "none" : "flex";
+  }
+  intervallAuswahl.addEventListener("change", startmonatUmschalten);
+  startmonatUmschalten();
+</script>
+{% endblock %}

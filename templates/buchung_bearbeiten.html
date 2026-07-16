@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block titel %}Buchung bearbeiten – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <h1>Buchung bearbeiten</h1>
+  <a class="knopf-sekundaer" href="{{ url_for('buchungen', monat=buchung.datum[:7]) }}">Zurück</a>
+</div>
+
+<section class="karte">
+  <form class="buchung-formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Art
+      <select name="art" id="art-auswahl">
+        <option value="ausgabe" {{ 'selected' if buchung.art == 'ausgabe' }}>Ausgabe</option>
+        <option value="einnahme" {{ 'selected' if buchung.art == 'einnahme' }}>Einnahme</option>
+      </select>
+    </label>
+    <label>Betrag (€)
+      <input name="betrag" required inputmode="decimal"
+             value="{{ '%.2f'|format(buchung.betrag_cent / 100)|replace('.', ',') }}">
+    </label>
+    <label>Kategorie
+      <select name="kategorie_id" id="kategorie-auswahl">
+        {% for k in kategorien %}
+        <option value="{{ k.id }}" data-art="{{ k.art }}" {{ 'selected' if k.id == buchung.kategorie_id }}>
+          {{ kicon(k.name) }} {{ k.name }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Datum
+      <input type="date" name="datum" value="{{ buchung.datum[:10] }}" required>
+    </label>
+    <label class="breit">Beschreibung
+      <input name="beschreibung" value="{{ buchung.beschreibung }}" placeholder="optional">
+    </label>
+    <button type="submit">Änderungen speichern</button>
+  </form>
+</section>
+
+<script>
+  const artAuswahl = document.getElementById("art-auswahl");
+  const kategorieAuswahl = document.getElementById("kategorie-auswahl");
+  function kategorienFiltern(erstesMal) {
+    let erste = null;
+    for (const option of kategorieAuswahl.options) {
+      const passt = option.dataset.art === artAuswahl.value;
+      option.hidden = !passt;
+      option.disabled = !passt;
+      if (passt && erste === null) erste = option;
+    }
+    if (kategorieAuswahl.selectedOptions[0]?.disabled && erste) erste.selected = true;
+  }
+  artAuswahl.addEventListener("change", kategorienFiltern);
+  // Beim ersten Laden nur ausblenden, aber die gespeicherte Kategorie behalten.
+  for (const option of kategorieAuswahl.options) {
+    const passt = option.dataset.art === artAuswahl.value;
+    option.hidden = !passt; option.disabled = !passt;
+  }
+</script>
+{% endblock %}

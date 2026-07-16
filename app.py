@@ -526,6 +526,46 @@ def buchung_loeschen(buchung_id: int):
     return redirect(request.referrer or url_for("buchungen"))
 
 
+@app.route("/buchungen/<int:buchung_id>/bearbeiten", methods=["GET", "POST"])
+@anmeldung_erforderlich
+def buchung_bearbeiten(buchung_id: int):
+    buchung = g.db.execute(
+        "SELECT * FROM buchungen WHERE id = ?", (buchung_id,)
+    ).fetchone()
+    if not buchung:
+        abort(404)
+
+    if request.method == "POST":
+        try:
+            art = request.form["art"]
+            if art not in ("einnahme", "ausgabe"):
+                raise ValueError("Ungültige Art.")
+            kategorie = g.db.execute(
+                "SELECT id FROM kategorien WHERE id = ? AND art = ?",
+                (request.form["kategorie_id"], art),
+            ).fetchone()
+            if not kategorie:
+                raise ValueError("Kategorie passt nicht zur gewählten Art.")
+            datum = datetime.date.fromisoformat(request.form["datum"]).isoformat()
+            g.db.execute(
+                "UPDATE buchungen SET art = ?, kategorie_id = ?, betrag_cent = ?,"
+                " beschreibung = ?, datum = ? WHERE id = ?",
+                (art, kategorie["id"], cent(request.form["betrag"]),
+                 request.form.get("beschreibung", "").strip(), datum, buchung_id),
+            )
+            g.db.commit()
+            flash("Buchung aktualisiert.", "ok")
+            return redirect(url_for("buchungen", monat=datum[:7]))
+        except (ValueError, KeyError) as e:
+            flash(f"Nicht gespeichert: {e}", "fehler")
+
+    return render_template(
+        "buchung_bearbeiten.html",
+        buchung=buchung,
+        kategorien=g.db.execute("SELECT * FROM kategorien ORDER BY art, name").fetchall(),
+    )
+
+
 @app.route("/dauerauftraege", methods=["GET", "POST"])
 @anmeldung_erforderlich
 def dauerauftraege():
@@ -540,12 +580,18 @@ def dauerauftraege():
                 ).fetchone()
                 if not kategorie:
                     raise ValueError("Kategorie passt nicht zur gewählten Art.")
+                intervall = int(request.form.get("intervall", 1))
+                if intervall not in database.INTERVALLE:
+                    raise ValueError("Ungültiges Intervall.")
+                monatstag = max(1, min(28, int(request.form["monatstag"])))
+                startmonat = max(1, min(12, int(request.form.get("startmonat", 1))))
                 g.db.execute(
                     "INSERT INTO dauerauftraege (benutzer_id, art, kategorie_id, betrag_cent,"
-                    " beschreibung, monatstag) VALUES (?, ?, ?, ?, ?, ?)",
+                    " beschreibung, monatstag, intervall_monate, startmonat)"
+                    " VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (g.benutzer["id"], art, kategorie["id"], cent(request.form["betrag"]),
                      request.form["beschreibung"].strip() or "Dauerauftrag",
-                     max(1, min(28, int(request.form["monatstag"])))),
+                     monatstag, intervall, startmonat),
                 )
                 flash("Dauerauftrag angelegt.", "ok")
             elif aktion == "betrag":
@@ -578,6 +624,55 @@ def dauerauftraege():
         "dauerauftraege.html",
         dauerauftraege=zeilen,
         kategorien=g.db.execute("SELECT * FROM kategorien ORDER BY art, name").fetchall(),
+        intervalle=database.INTERVALLE,
+        monatsnamen=MONATSNAMEN,
+    )
+
+
+@app.route("/dauerauftraege/<int:auftrag_id>/bearbeiten", methods=["GET", "POST"])
+@anmeldung_erforderlich
+def dauerauftrag_bearbeiten(auftrag_id: int):
+    auftrag = g.db.execute(
+        "SELECT * FROM dauerauftraege WHERE id = ?", (auftrag_id,)
+    ).fetchone()
+    if not auftrag:
+        abort(404)
+
+    if request.method == "POST":
+        try:
+            art = request.form["art"]
+            if art not in ("einnahme", "ausgabe"):
+                raise ValueError("Ungültige Art.")
+            kategorie = g.db.execute(
+                "SELECT id FROM kategorien WHERE id = ? AND art = ?",
+                (request.form["kategorie_id"], art),
+            ).fetchone()
+            if not kategorie:
+                raise ValueError("Kategorie passt nicht zur gewählten Art.")
+            intervall = int(request.form.get("intervall", 1))
+            if intervall not in database.INTERVALLE:
+                raise ValueError("Ungültiges Intervall.")
+            g.db.execute(
+                "UPDATE dauerauftraege SET art = ?, kategorie_id = ?, betrag_cent = ?,"
+                " beschreibung = ?, monatstag = ?, intervall_monate = ?, startmonat = ? WHERE id = ?",
+                (art, kategorie["id"], cent(request.form["betrag"]),
+                 request.form["beschreibung"].strip() or "Dauerauftrag",
+                 max(1, min(28, int(request.form["monatstag"]))),
+                 intervall, max(1, min(12, int(request.form.get("startmonat", 1)))),
+                 auftrag_id),
+            )
+            g.db.commit()
+            flash("Dauerauftrag aktualisiert.", "ok")
+            return redirect(url_for("dauerauftraege"))
+        except (ValueError, KeyError) as e:
+            flash(f"Nicht gespeichert: {e}", "fehler")
+
+    return render_template(
+        "dauerauftrag_bearbeiten.html",
+        auftrag=auftrag,
+        kategorien=g.db.execute("SELECT * FROM kategorien ORDER BY art, name").fetchall(),
+        intervalle=database.INTERVALLE,
+        monatsnamen=MONATSNAMEN,
     )
 
 

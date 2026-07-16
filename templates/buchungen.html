@@ -69,6 +69,8 @@
           {{ '+' if b.art == 'einnahme' else '−' }}{{ b.betrag_cent|euro }}
         </td>
         <td class="t-aktion rechts">
+          <a class="knopf-bearbeiten" href="{{ url_for('buchung_bearbeiten', buchung_id=b.id) }}"
+             title="Buchung bearbeiten">✎</a>
           <form method="post" action="{{ url_for('buchung_loeschen', buchung_id=b.id) }}"
                 onsubmit="return confirm('Diese Buchung wirklich löschen?')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
