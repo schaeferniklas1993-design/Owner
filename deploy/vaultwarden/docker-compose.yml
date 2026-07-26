@@ -1,0 +1,26 @@
+# Vaultwarden – leichtgewichtiger, Bitwarden-kompatibler Passwort-Server.
+# Läuft nur lokal (127.0.0.1:8081); Caddy stellt HTTPS nach außen bereit.
+#
+# Start:  cd /opt/vaultwarden && sudo docker compose up -d
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      # EIGENE Adresse eintragen (die zweite DuckDNS-Domain, siehe README):
+      DOMAIN: "https://haushalt-vault.duckdns.org"
+
+      # Registrierung: zum Anlegen eurer Konten kurz "true", DANACH auf "false"
+      # setzen und `docker compose up -d` erneut ausführen – dann kann niemand
+      # mehr neue Konten erstellen.
+      SIGNUPS_ALLOWED: "true"
+
+      # Admin-Oberfläche (optional). Zum Aktivieren ein langes Zufallstoken
+      # erzeugen:  openssl rand -base64 48
+      # und die nächste Zeile einkommentieren:
+      # ADMIN_TOKEN: "HIER_LANGES_ZUFALLSTOKEN_EINSETZEN"
+    volumes:
+      - ./vw-data:/data          # hier liegen die (verschlüsselten) Daten
+    ports:
+      - "127.0.0.1:8081:80"      # nur lokal erreichbar, Caddy proxyt davor
