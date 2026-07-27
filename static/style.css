@@ -104,6 +104,38 @@ a { color: var(--akzent); }
 }
 .kachel-link:hover { text-decoration: underline; }
 
+/* Filterleiste mit Dropdowns */
+.filter-formular {
+  display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: flex-end;
+  margin-bottom: 0.75rem;
+}
+.filter-formular label {
+  display: flex; flex-direction: column; gap: 0.25rem;
+  font-size: 0.8rem; color: var(--tinte-2); flex: 1 1 9rem; min-width: 8rem;
+}
+.auswahl-summe {
+  display: flex; flex-wrap: wrap; gap: 0.9rem; align-items: baseline;
+  padding: 0.6rem 0.8rem; margin-bottom: 0.5rem;
+  background: var(--flaeche); border-radius: 10px;
+  font-variant-numeric: tabular-nums; font-weight: 600;
+}
+.auswahl-saldo { margin-left: auto; font-weight: 400; color: var(--tinte-2); }
+
+/* Auswertung: Kategorie-Gruppen */
+.kat-gruppe { border-bottom: 1px solid var(--linie); padding: 0.6rem 0; }
+.kat-gruppe:last-child { border-bottom: none; }
+.kat-kopf {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.75rem; cursor: pointer; list-style: none; padding: 0.25rem 0;
+}
+.kat-kopf::-webkit-details-marker { display: none; }
+.kat-kopf::before { content: "▸"; color: var(--tinte-3); margin-right: 0.4rem; }
+details[open] > .kat-kopf::before { content: "▾"; }
+.kat-name { font-weight: 600; }
+.kat-zahlen { display: flex; gap: 0.75rem; align-items: baseline; white-space: nowrap; }
+.kat-anzahl { color: var(--tinte-3); font-size: 0.85rem; }
+.kat-summe { font-weight: 700; font-variant-numeric: tabular-nums; }
+
 /* Versions-Fußzeile */
 .fuss {
   max-width: 1080px; margin: 0 auto; padding: 1.5rem 1.25rem 2rem;
@@ -327,6 +359,14 @@ button:hover { filter: brightness(1.08); }
   .t-status { grid-area: status; }
   .t-aktion { grid-area: aktion; }
   .knopf-loeschen { padding: 0.3rem 0.7rem; font-size: 1rem; }
+
+  /* Auswertung: ohne Kategoriespalte – Beschreibung und Betrag in einer Zeile. */
+  .auswertung-tabelle tr {
+    grid-template-areas:
+      "datum person aktion"
+      "beschreibung beschreibung betrag";
+  }
+  .auswertung-tabelle .t-beschreibung { font-weight: 600; color: var(--tinte); }
 
   /* Daueraufträge: zusätzlich Status-Zeile und Betrag-Formular in voller Breite. */
   .da-karten tr {

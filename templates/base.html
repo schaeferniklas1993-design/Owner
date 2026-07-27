@@ -22,6 +22,7 @@
     <nav>
       <a href="{{ url_for('dashboard') }}" class="{{ 'aktiv' if request.endpoint == 'dashboard' }}">Dashboard</a>
       <a href="{{ url_for('buchungen') }}" class="{{ 'aktiv' if request.endpoint == 'buchungen' }}">Buchungen</a>
+      <a href="{{ url_for('auswertung') }}" class="{{ 'aktiv' if request.endpoint == 'auswertung' }}">Auswertung</a>
       <a href="{{ url_for('dauerauftraege') }}" class="{{ 'aktiv' if request.endpoint == 'dauerauftraege' }}">Daueraufträge</a>
       <a href="{{ url_for('sparen') }}" class="{{ 'aktiv' if request.endpoint == 'sparen' }}">Sparziele</a>
       <a href="{{ url_for('passwort_aendern') }}" class="{{ 'aktiv' if request.endpoint == 'passwort_aendern' }}">Passwort</a>

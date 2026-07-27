@@ -64,7 +64,7 @@ def _secret_key() -> str:
 
 # Sichtbare Versionsnummer – erscheint unten in der App. So lässt sich prüfen,
 # ob nach einem Update wirklich der neue Stand läuft.
-VERSION = "2026.07.16-6 · Löschen repariert, Fixkosten, Grundbedarf"
+VERSION = "2026.07.17-7 · Auswertung nach Kategorie, Filter-Menüs"
 
 app = Flask(__name__)
 database.init_db()
@@ -428,20 +428,26 @@ def dashboard():
         {"name": name, "wert": fixkosten[uid]} for uid, name in person_namen.items()
     ]
 
-    # Vergleich mit dem Vormonat für die Kacheln.
+    # Vergleich mit dem Vormonat – nur sinnvoll, wenn es dort auch Buchungen gab.
+    # Im allerersten Dokumentationsmonat wäre „+100 % zum Vormonat" irreführend.
+    vormonat_key = _monat_verschieben(jahr, monat, -1)
     vormonat_summen = {"einnahme": 0, "ausgabe": 0}
     for zeile in g.db.execute(
         "SELECT art, SUM(betrag_cent) AS summe FROM buchungen"
         " WHERE strftime('%Y-%m', datum) = ? GROUP BY art",
-        (_monat_verschieben(jahr, monat, -1),),
+        (vormonat_key,),
     ):
         vormonat_summen[zeile["art"]] = zeile["summe"]
-    vergleich = {
-        "einnahme": summen["einnahme"] - vormonat_summen["einnahme"],
-        "ausgabe": summen["ausgabe"] - vormonat_summen["ausgabe"],
-        "saldo": (summen["einnahme"] - summen["ausgabe"])
-        - (vormonat_summen["einnahme"] - vormonat_summen["ausgabe"]),
-    }
+
+    hat_vormonat = any(vormonat_summen.values())
+    vergleich = None
+    if hat_vormonat:
+        vergleich = {
+            "einnahme": summen["einnahme"] - vormonat_summen["einnahme"],
+            "ausgabe": summen["ausgabe"] - vormonat_summen["ausgabe"],
+            "saldo": (summen["einnahme"] - summen["ausgabe"])
+            - (vormonat_summen["einnahme"] - vormonat_summen["ausgabe"]),
+        }
 
     # Ausgaben nach Kategorie für das Ringdiagramm.
     kategorien_summen = [
@@ -517,6 +523,8 @@ def buchungen():
     jahr, monat = _monat_aus_request()
     monat_key = f"{jahr:04d}-{monat:02d}"
     person_filter = request.args.get("person", "alle")
+    art_filter = request.args.get("art", "alle")
+    kategorie_filter = request.args.get("kategorie", "alle")
 
     sql = """SELECT b.*, k.name AS kategorie, u.anzeigename AS person, u.benutzername
              FROM buchungen b
@@ -527,8 +535,19 @@ def buchungen():
     if person_filter != "alle":
         sql += " AND u.benutzername = ?"
         parameter.append(person_filter)
+    if art_filter in ("einnahme", "ausgabe"):
+        sql += " AND b.art = ?"
+        parameter.append(art_filter)
+    if kategorie_filter != "alle":
+        sql += " AND k.name = ?"
+        parameter.append(kategorie_filter)
     sql += " ORDER BY b.datum DESC, b.id DESC"
     zeilen = g.db.execute(sql, parameter).fetchall()
+
+    # Summen der aktuell gefilterten Auswahl (zeigt z. B. „Lebensmittel im Juli“).
+    auswahl = {"einnahme": 0, "ausgabe": 0}
+    for b in zeilen:
+        auswahl[b["art"]] += b["betrag_cent"]
 
     # CSV-Export der aktuellen Auswahl, z. B. für Excel oder die Steuer.
     if request.args.get("export") == "csv":
@@ -552,17 +571,95 @@ def buchungen():
         )
         return antwort
 
+    # Nur Kategorien anbieten, die in diesem Monat tatsächlich vorkommen.
+    vorhandene_kategorien = [
+        z["name"] for z in g.db.execute(
+            """SELECT DISTINCT k.name FROM buchungen b
+               JOIN kategorien k ON k.id = b.kategorie_id
+               WHERE strftime('%Y-%m', b.datum) = ? ORDER BY k.name""",
+            (monat_key,),
+        )
+    ]
+
     return render_template(
         "buchungen.html",
         buchungen=zeilen,
+        auswahl=auswahl,
         monat_key=monat_key,
         monat_titel=f"{MONATSNAMEN[monat - 1]} {jahr}",
         vormonat=_monat_verschieben(jahr, monat, -1),
         naechster_monat=_monat_verschieben(jahr, monat, 1),
         person_filter=person_filter,
+        art_filter=art_filter,
+        kategorie_filter=kategorie_filter,
+        vorhandene_kategorien=vorhandene_kategorien,
         alle_benutzer=g.db.execute("SELECT * FROM benutzer ORDER BY id").fetchall(),
         kategorien=g.db.execute("SELECT * FROM kategorien ORDER BY art, name").fetchall(),
         heute=datetime.date.today().isoformat(),
+    )
+
+
+@app.route("/auswertung")
+@anmeldung_erforderlich
+def auswertung():
+    """Ausgaben (und Einnahmen) nach Kategorie gruppiert – aufklappbar mit
+    allen Einzelbuchungen: wann, wer, wie viel."""
+    jahr, monat = _monat_aus_request()
+    monat_key = f"{jahr:04d}-{monat:02d}"
+    person_filter = request.args.get("person", "alle")
+    art_filter = request.args.get("art", "ausgabe")
+    if art_filter not in ("einnahme", "ausgabe"):
+        art_filter = "ausgabe"
+
+    parameter: list = [monat_key, art_filter]
+    person_bedingung = ""
+    if person_filter != "alle":
+        person_bedingung = " AND u.benutzername = ?"
+        parameter.append(person_filter)
+
+    zeilen = g.db.execute(
+        f"""SELECT b.*, k.name AS kategorie, u.anzeigename AS person, u.benutzername
+            FROM buchungen b
+            JOIN kategorien k ON k.id = b.kategorie_id
+            JOIN benutzer u ON u.id = b.benutzer_id
+            WHERE strftime('%Y-%m', b.datum) = ? AND b.art = ?{person_bedingung}
+            ORDER BY b.datum DESC, b.id DESC""",
+        parameter,
+    ).fetchall()
+
+    # Nach Kategorie bündeln, größter Posten zuerst.
+    nach_kategorie: dict = {}
+    gesamt = 0
+    for b in zeilen:
+        eintrag = nach_kategorie.setdefault(
+            b["kategorie"],
+            {"name": b["kategorie"], "summe": 0, "anzahl": 0, "buchungen": [],
+             "grundbedarf": b["kategorie"] in GRUNDBEDARF},
+        )
+        eintrag["summe"] += b["betrag_cent"]
+        eintrag["anzahl"] += 1
+        eintrag["buchungen"].append(b)
+        gesamt += b["betrag_cent"]
+
+    gruppen = sorted(nach_kategorie.values(), key=lambda e: e["summe"], reverse=True)
+    for gruppe in gruppen:
+        gruppe["anteil"] = round(gruppe["summe"] / gesamt * 100) if gesamt else 0
+
+    grundbedarf_summe = sum(gr["summe"] for gr in gruppen if gr["grundbedarf"])
+
+    return render_template(
+        "auswertung.html",
+        gruppen=gruppen,
+        gesamt=gesamt,
+        grundbedarf_summe=grundbedarf_summe,
+        rest_summe=gesamt - grundbedarf_summe,
+        monat_key=monat_key,
+        monat_titel=f"{MONATSNAMEN[monat - 1]} {jahr}",
+        vormonat=_monat_verschieben(jahr, monat, -1),
+        naechster_monat=_monat_verschieben(jahr, monat, 1),
+        person_filter=person_filter,
+        art_filter=art_filter,
+        alle_benutzer=g.db.execute("SELECT * FROM benutzer ORDER BY id").fetchall(),
     )
 
 

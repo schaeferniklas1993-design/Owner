@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_makros.html" import kategorie_select %}
+{% from "_makros.html" import kategorie_select, filter_leiste %}
 {% block titel %}Buchungen – Haushaltsbuch{% endblock %}
 {% block inhalt %}
 <div class="seitenkopf">
@@ -40,18 +40,25 @@
 <section class="karte">
   <div class="karten-kopf">
     <h2>{{ buchungen|length }} Buchung{{ 'en' if buchungen|length != 1 }} – {{ monat_titel }}</h2>
-    <div class="filter-reihe">
-      <a class="filter-chip {{ 'aktiv' if person_filter == 'alle' }}"
-         href="{{ url_for('buchungen', monat=monat_key, person='alle') }}">Alle</a>
-      {% for u in alle_benutzer %}
-      <a class="filter-chip {{ 'aktiv' if person_filter == u.benutzername }}"
-         href="{{ url_for('buchungen', monat=monat_key, person=u.benutzername) }}">{{ u.anzeigename }}</a>
-      {% endfor %}
-      <a class="filter-chip"
-         href="{{ url_for('buchungen', monat=monat_key, person=person_filter, export='csv') }}"
-         title="Aktuelle Auswahl als CSV herunterladen (z. B. für Excel)">⬇ CSV</a>
-    </div>
+    <a class="knopf-sekundaer"
+       href="{{ url_for('buchungen', monat=monat_key, person=person_filter, art=art_filter, kategorie=kategorie_filter, export='csv') }}"
+       title="Aktuelle Auswahl als CSV herunterladen (z. B. für Excel)">⬇ CSV</a>
   </div>
+
+  {{ filter_leiste('buchungen', monat_key, person_filter, alle_benutzer,
+                   art_filter, kategorie_filter, vorhandene_kategorien) }}
+
+  {% if buchungen %}
+  <div class="auswahl-summe">
+    {% if auswahl.einnahme %}<span class="plus">+{{ auswahl.einnahme|euro }}</span>{% endif %}
+    {% if auswahl.ausgabe %}<span class="minus">−{{ auswahl.ausgabe|euro }}</span>{% endif %}
+    <span class="auswahl-saldo">Saldo dieser Auswahl:
+      <strong class="{{ 'plus' if auswahl.einnahme >= auswahl.ausgabe else 'minus' }}">
+        {{ (auswahl.einnahme - auswahl.ausgabe)|euro }}
+      </strong>
+    </span>
+  </div>
+  {% endif %}
   {% if buchungen %}
   <table class="tabelle karten-tabelle">
     <thead><tr><th>Datum</th><th>Person</th><th>Kategorie</th><th>Beschreibung</th><th class="rechts">Betrag</th><th></th></tr></thead>

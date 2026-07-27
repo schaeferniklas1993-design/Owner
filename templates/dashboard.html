@@ -14,23 +14,35 @@
   <div class="kachel">
     <div class="kachel-label">Einnahmen</div>
     <div class="kachel-wert plus">{{ einnahmen|euro }}</div>
+    {% if vergleich %}
     <div class="kachel-detail {{ 'plus' if vergleich.einnahme >= 0 else 'minus' }}">
       {{ '▲' if vergleich.einnahme >= 0 else '▼' }} {{ vergleich.einnahme|abs|euro }} zum Vormonat
     </div>
+    {% else %}
+    <div class="kachel-detail">erster erfasster Monat</div>
+    {% endif %}
   </div>
   <div class="kachel">
     <div class="kachel-label">Ausgaben</div>
     <div class="kachel-wert minus">{{ ausgaben|euro }}</div>
+    {% if vergleich %}
     <div class="kachel-detail {{ 'minus' if vergleich.ausgabe > 0 else 'plus' }}">
       {{ '▲' if vergleich.ausgabe >= 0 else '▼' }} {{ vergleich.ausgabe|abs|euro }} zum Vormonat
     </div>
+    {% else %}
+    <div class="kachel-detail">noch kein Vergleichsmonat</div>
+    {% endif %}
   </div>
   <div class="kachel">
     <div class="kachel-label">Saldo</div>
     <div class="kachel-wert {{ 'plus' if saldo >= 0 else 'minus' }}">{{ saldo|euro }}</div>
+    {% if vergleich %}
     <div class="kachel-detail {{ 'plus' if vergleich.saldo >= 0 else 'minus' }}">
       {{ '▲' if vergleich.saldo >= 0 else '▼' }} {{ vergleich.saldo|abs|euro }} zum Vormonat
     </div>
+    {% else %}
+    <div class="kachel-detail">Einnahmen minus Ausgaben</div>
+    {% endif %}
   </div>
   {% for person in pro_person %}
   <div class="kachel">

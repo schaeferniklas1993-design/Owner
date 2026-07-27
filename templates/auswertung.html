@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% from "_makros.html" import filter_leiste %}
+{% block titel %}Auswertung – Haushaltsbuch{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <h1>Auswertung</h1>
+  <div class="monatswahl">
+    <a class="monat-pfeil" href="{{ url_for('auswertung', monat=vormonat, person=person_filter, art=art_filter) }}" aria-label="Vormonat">‹</a>
+    <span class="monat-titel">{{ monat_titel }}</span>
+    <a class="monat-pfeil" href="{{ url_for('auswertung', monat=naechster_monat, person=person_filter, art=art_filter) }}" aria-label="Nächster Monat">›</a>
+  </div>
+</div>
+
+<section class="karte">
+  {{ filter_leiste('auswertung', monat_key, person_filter, alle_benutzer, art_filter) }}
+</section>
+
+{% if gruppen %}
+<section class="kacheln">
+  <div class="kachel">
+    <div class="kachel-label">{{ 'Ausgaben' if art_filter == 'ausgabe' else 'Einnahmen' }} gesamt</div>
+    <div class="kachel-wert {{ 'minus' if art_filter == 'ausgabe' else 'plus' }}">{{ gesamt|euro }}</div>
+  </div>
+  {% if art_filter == 'ausgabe' %}
+  <div class="kachel">
+    <div class="kachel-label">🧺 Lebensnotwendig</div>
+    <div class="kachel-wert">{{ grundbedarf_summe|euro }}</div>
+    <div class="kachel-detail">{{ (grundbedarf_summe / gesamt * 100)|round|int if gesamt else 0 }} % der Ausgaben</div>
+  </div>
+  <div class="kachel">
+    <div class="kachel-label">Übrige Ausgaben</div>
+    <div class="kachel-wert">{{ rest_summe|euro }}</div>
+    <div class="kachel-detail">{{ (rest_summe / gesamt * 100)|round|int if gesamt else 0 }} % der Ausgaben</div>
+  </div>
+  {% endif %}
+</section>
+
+<section class="karte">
+  <h2>Nach Kategorie – {{ monat_titel }}</h2>
+  <p class="karten-hinweis">Auf eine Kategorie tippen, um alle Buchungen zu sehen.</p>
+
+  {% for gr in gruppen %}
+  <details class="kat-gruppe" {{ 'open' if gruppen|length == 1 }}>
+    <summary class="kat-kopf">
+      <span class="kat-name">
+        {{ kicon(gr.name) }} {{ gr.name }}
+        {% if gr.grundbedarf %}<span class="badge">Grundbedarf</span>{% endif %}
+      </span>
+      <span class="kat-zahlen">
+        <span class="kat-anzahl">{{ gr.anzahl }}×</span>
+        <span class="kat-summe">{{ gr.summe|euro }}</span>
+      </span>
+    </summary>
+    <div class="fortschritt" title="{{ gr.anteil }} % der {{ 'Ausgaben' if art_filter == 'ausgabe' else 'Einnahmen' }}">
+      <div class="fortschritt-fuellung" style="width: {{ gr.anteil }}%"></div>
+    </div>
+    <div class="fortschritt-text">{{ gr.anteil }} % · Ø {{ (gr.summe / gr.anzahl)|round|int|euro }} pro Buchung</div>
+    <table class="tabelle karten-tabelle auswertung-tabelle">
+      <thead><tr><th>Datum</th><th>Person</th><th>Beschreibung</th><th class="rechts">Betrag</th><th></th></tr></thead>
+      <tbody>
+        {% for b in gr.buchungen %}
+        <tr>
+          <td class="t-datum">{{ b.datum|datum_de }}</td>
+          <td class="t-person">{{ b.person }}</td>
+          <td class="t-beschreibung">{{ b.beschreibung or "–" }}{% if b.dauerauftrag_id %} <span class="badge">Dauerauftrag</span>{% endif %}</td>
+          <td class="t-betrag rechts {{ 'plus' if b.art == 'einnahme' else 'minus' }}">{{ b.betrag_cent|euro }}</td>
+          <td class="t-aktion rechts">
+            <a class="knopf-bearbeiten" href="{{ url_for('buchung_bearbeiten', buchung_id=b.id) }}" title="Bearbeiten">✎</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </details>
+  {% endfor %}
+</section>
+{% else %}
+<section class="karte">
+  <p class="leer-hinweis">
+    Noch keine {{ 'Ausgaben' if art_filter == 'ausgabe' else 'Einnahmen' }} in {{ monat_titel }}
+    {% if person_filter != 'alle' %}für diese Person{% endif %}.
+  </p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,3 +1,40 @@
+{# Filterleiste mit Dropdown-Menüs. Die Auswahl wird beim Ändern sofort
+   übernommen (Formular schickt sich selbst ab – kein Extra-Knopf nötig). #}
+{% macro filter_leiste(ziel, monat_key, person_filter, alle_benutzer,
+                       art_filter=None, kategorie_filter=None, kategorien=None) %}
+<form class="filter-formular" method="get" action="{{ url_for(ziel) }}">
+  <input type="hidden" name="monat" value="{{ monat_key }}">
+  <label>Person
+    <select name="person" onchange="this.form.submit()">
+      <option value="alle" {{ 'selected' if person_filter == 'alle' }}>Alle</option>
+      {% for u in alle_benutzer %}
+      <option value="{{ u.benutzername }}" {{ 'selected' if person_filter == u.benutzername }}>{{ u.anzeigename }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% if art_filter is not none %}
+  <label>Art
+    <select name="art" onchange="this.form.submit()">
+      {% if kategorien is not none %}<option value="alle" {{ 'selected' if art_filter == 'alle' }}>Alle</option>{% endif %}
+      <option value="ausgabe" {{ 'selected' if art_filter == 'ausgabe' }}>Nur Ausgaben</option>
+      <option value="einnahme" {{ 'selected' if art_filter == 'einnahme' }}>Nur Einnahmen</option>
+    </select>
+  </label>
+  {% endif %}
+  {% if kategorien is not none %}
+  <label>Kategorie
+    <select name="kategorie" onchange="this.form.submit()">
+      <option value="alle" {{ 'selected' if kategorie_filter == 'alle' }}>Alle Kategorien</option>
+      {% for name in kategorien %}
+      <option value="{{ name }}" {{ 'selected' if kategorie_filter == name }}>{{ kicon(name) }} {{ name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  {% endif %}
+  <noscript><button type="submit">Filtern</button></noscript>
+</form>
+{% endmacro %}
+
 {# Gruppiertes Kategorie-Auswahlmenü: Einnahmen, lebensnotwendige Ausgaben
    (Grundbedarf) und weitere Ausgaben – jeweils als eigene Gruppe (optgroup). #}
 {% macro kategorie_select(kategorien, gewaehlt=None) %}
