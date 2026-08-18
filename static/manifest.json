@@ -1,0 +1,30 @@
+{
+  "name": "Haushaltsbuch",
+  "short_name": "Haushalt",
+  "description": "Gemeinsame Ein- und Ausgaben, ein Konto pro Person.",
+  "lang": "de",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f6f8",
+  "theme_color": "#2a78d6",
+  "icons": [
+    { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Neue Buchung",
+      "short_name": "Buchen",
+      "url": "/buchungen",
+      "description": "Direkt eine Ausgabe oder Einnahme erfassen"
+    },
+    {
+      "name": "Auswertung",
+      "short_name": "Auswertung",
+      "url": "/auswertung",
+      "description": "Ausgaben nach Kategorie ansehen"
+    }
+  ]
+}

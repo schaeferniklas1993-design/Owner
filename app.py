@@ -12,7 +12,7 @@ import secrets
 import sqlite3
 
 from flask import (Flask, Response, abort, flash, g, redirect, render_template,
-                   request, session, url_for)
+                   request, send_from_directory, session, url_for)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import database
@@ -64,7 +64,7 @@ def _secret_key() -> str:
 
 # Sichtbare Versionsnummer – erscheint unten in der App. So lässt sich prüfen,
 # ob nach einem Update wirklich der neue Stand läuft.
-VERSION = "2026.08.18-8 · Passwort einblendbar"
+VERSION = "2026.08.18-9 · Android-App-Symbol, Passwort einblendbar"
 
 app = Flask(__name__)
 database.init_db()
@@ -352,6 +352,16 @@ def _monat_aus_request() -> tuple[int, int]:
 def _monat_verschieben(jahr: int, monat: int, schritt: int) -> str:
     index = jahr * 12 + (monat - 1) + schritt
     return f"{index // 12:04d}-{index % 12 + 1:02d}"
+
+
+@app.route("/sw.js")
+def service_worker():
+    """Service Worker vom Stammpfad ausliefern (nicht aus /static), damit er
+    für die gesamte App gilt und Android sie als App installieren kann."""
+    antwort = send_from_directory(app.static_folder, "sw.js")
+    antwort.headers["Content-Type"] = "application/javascript; charset=utf-8"
+    antwort.headers["Cache-Control"] = "no-cache"  # Änderungen greifen sofort
+    return antwort
 
 
 @app.route("/")

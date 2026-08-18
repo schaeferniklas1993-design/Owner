@@ -12,6 +12,8 @@
   <meta name="theme-color" content="#2a78d6">
   <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon.png') }}">
   <link rel="icon" href="{{ url_for('static', filename='icon.png') }}">
+  <!-- Android/Chrome: macht die Seite als richtige App installierbar -->
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -45,5 +47,11 @@
 {% if g.benutzer %}
 <footer class="fuss">Haushaltsbuch · Version {{ app_version }}</footer>
 {% endif %}
+<script>
+  // Service Worker anmelden – nötig, damit Android die Seite als App anbietet.
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+  }
+</script>
 </body>
 </html>
