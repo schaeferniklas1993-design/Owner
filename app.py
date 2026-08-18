@@ -64,7 +64,7 @@ def _secret_key() -> str:
 
 # Sichtbare Versionsnummer – erscheint unten in der App. So lässt sich prüfen,
 # ob nach einem Update wirklich der neue Stand läuft.
-VERSION = "2026.07.17-7 · Auswertung nach Kategorie, Filter-Menüs"
+VERSION = "2026.08.18-8 · Passwort einblendbar"
 
 app = Flask(__name__)
 database.init_db()

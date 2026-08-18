@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_makros.html" import passwort_feld %}
 {% block titel %}Passwort wählen – Haushaltsbuch{% endblock %}
 {% block inhalt %}
 <div class="login-buehne">
@@ -21,18 +22,12 @@
            autocomplete="username" readonly hidden>
 
     {% if not erzwungen %}
-    <label>Aktuelles Passwort
-      <input type="password" name="aktuelles_passwort" autocomplete="current-password" required>
-    </label>
+    {{ passwort_feld("aktuelles_passwort", "Aktuelles Passwort") }}
     {% endif %}
-    <label>Neues Passwort <span class="feld-hinweis">(mindestens 8 Zeichen)</span>
-      <input type="password" name="neues_passwort" autocomplete="new-password"
-             minlength="8" required autofocus>
-    </label>
-    <label>Neues Passwort wiederholen
-      <input type="password" name="wiederholung" autocomplete="new-password"
-             minlength="8" required>
-    </label>
+    {{ passwort_feld("neues_passwort", "Neues Passwort", "new-password",
+                     autofocus=true, minlength=8, hinweis="(mindestens 8 Zeichen)") }}
+    {{ passwort_feld("wiederholung", "Neues Passwort wiederholen", "new-password",
+                     minlength=8) }}
     <button type="submit">Passwort speichern</button>
     <p class="login-untertitel">
       💡 Dein iPhone fragt gleich, ob es das Passwort <strong>sichern</strong> soll –
@@ -40,4 +35,5 @@
     </p>
   </form>
 </div>
+<script src="{{ url_for('static', filename='passwort-auge.js') }}"></script>
 {% endblock %}

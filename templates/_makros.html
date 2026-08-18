@@ -1,3 +1,18 @@
+{# Passwortfeld mit Auge zum Ein-/Ausblenden des eingegebenen Passworts.
+   Der Knopf braucht type="button", sonst würde er das Formular abschicken. #}
+{% macro passwort_feld(name, beschriftung, autocomplete="current-password",
+                       autofocus=false, minlength=None, hinweis=None) %}
+<label>{{ beschriftung }}{% if hinweis %} <span class="feld-hinweis">{{ hinweis }}</span>{% endif %}
+  <span class="pw-feld">
+    <input type="password" name="{{ name }}" autocomplete="{{ autocomplete }}"
+           {% if minlength %}minlength="{{ minlength }}"{% endif %}
+           {% if autofocus %}autofocus{% endif %} required>
+    <button type="button" class="pw-auge" aria-pressed="false"
+            aria-label="Passwort anzeigen" title="Passwort anzeigen">👁</button>
+  </span>
+</label>
+{% endmacro %}
+
 {# Filterleiste mit Dropdown-Menüs. Die Auswahl wird beim Ändern sofort
    übernommen (Formular schickt sich selbst ab – kein Extra-Knopf nötig). #}
 {% macro filter_leiste(ziel, monat_key, person_filter, alle_benutzer,

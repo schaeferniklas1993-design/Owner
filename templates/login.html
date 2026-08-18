@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_makros.html" import passwort_feld %}
 {% block titel %}Anmelden – Haushaltsbuch{% endblock %}
 {% block inhalt %}
 <div class="login-buehne">
@@ -12,10 +13,9 @@
       <input name="benutzername" autocomplete="username" autofocus required
              placeholder="niklas oder maeuschen">
     </label>
-    <label>Passwort
-      <input type="password" name="passwort" autocomplete="current-password" required>
-    </label>
+    {{ passwort_feld("passwort", "Passwort") }}
     <button type="submit">Anmelden</button>
   </form>
 </div>
+<script src="{{ url_for('static', filename='passwort-auge.js') }}"></script>
 {% endblock %}

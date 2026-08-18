@@ -295,6 +295,18 @@ button:hover { filter: brightness(1.08); }
 .login-untertitel { color: var(--tinte-2); text-align: center; margin: -0.4rem 0 0.4rem; font-size: 0.9rem; }
 .login-karte label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; color: var(--tinte-2); }
 .login-karte button { margin-top: 0.4rem; }
+
+/* Passwortfeld mit Auge-Knopf zum Ein-/Ausblenden */
+.pw-feld { position: relative; display: block; }
+.pw-feld input { width: 100%; padding-right: 3rem; }
+.pw-auge {
+  position: absolute; top: 50%; right: 0.35rem; transform: translateY(-50%);
+  margin: 0; padding: 0.35rem 0.5rem;
+  background: none; border: none; box-shadow: none;
+  font-size: 1.15rem; line-height: 1; cursor: pointer;
+  opacity: 0.65;
+}
+.pw-auge:hover, .pw-auge:focus-visible { opacity: 1; filter: none; }
 .feld-hinweis { color: var(--tinte-3); font-weight: 400; }
 
 /* Tooltip für Diagramme */
