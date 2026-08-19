@@ -1,0 +1,23 @@
+[Unit]
+Description=Pflegeplaner (Gunicorn)
+After=network.target
+
+[Service]
+Type=notify
+User=pflege
+Group=pflege
+WorkingDirectory=/opt/pflegeplaner
+Environment="PATH=/opt/pflegeplaner/.venv/bin"
+ExecStart=/opt/pflegeplaner/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8002 app:app
+Restart=always
+RestartSec=5
+
+# Absicherung: der Dienst darf nur seinen eigenen Ordner beschreiben.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/pflegeplaner
+
+[Install]
+WantedBy=multi-user.target

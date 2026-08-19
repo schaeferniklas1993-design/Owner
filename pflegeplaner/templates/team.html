@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block titel %}Team – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf"><h1>Team</h1></div>
+
+<p class="seiten-hinweis">
+  Jedes Teammitglied bekommt einen eigenen Zugang. Beim ersten Anmelden muss
+  jede und jeder ein eigenes Passwort wählen – das Startpasswort gilt nur einmal.
+</p>
+
+<section class="karte">
+  <h2>Zugänge</h2>
+  <table class="tabelle">
+    <thead><tr><th>Name</th><th>Benutzername</th><th>Rolle</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for m in mitglieder %}
+      <tr>
+        <td data-titel="Name"><strong>{{ m.anzeigename }}</strong></td>
+        <td data-titel="Benutzername">{{ m.benutzername }}</td>
+        <td data-titel="Rolle">
+          {% if m.rolle == 'leitung' %}<span class="marke-wichtig">Leitung</span>
+          {% else %}<span class="marke-still">Pflege</span>{% endif %}
+        </td>
+        <td data-titel="Status">
+          {% if m.passwort_neu %}<span class="marke-still">Startpasswort aktiv</span>
+          {% else %}eigenes Passwort{% endif %}
+        </td>
+        <td class="rechts">
+          <form class="inline-formular" method="post"
+                onsubmit="return confirm('Passwort von {{ m.anzeigename }} zurücksetzen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="aktion" value="zuruecksetzen">
+            <input type="hidden" name="id" value="{{ m.id }}">
+            <input type="hidden" name="startpasswort" value="start-2026">
+            <button class="knopf-still" title="Passwort zurücksetzen">🔑</button>
+          </form>
+          {% if m.id != g.benutzer.id %}
+          <form class="inline-formular" method="post"
+                onsubmit="return confirm('Zugang von {{ m.anzeigename }} sperren?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="aktion" value="sperren">
+            <input type="hidden" name="id" value="{{ m.id }}">
+            <button class="knopf-still" title="Zugang sperren">✕</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<section class="karte">
+  <h2>Neuen Zugang anlegen</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="neu">
+    <label>Anzeigename
+      <input name="anzeigename" required placeholder="z. B. Sabine K.">
+    </label>
+    <label>Benutzername <span class="feld-hinweis">nur Buchstaben und Zahlen</span>
+      <input name="benutzername" required placeholder="z. B. sabine">
+    </label>
+    <label>Startpasswort <span class="feld-hinweis">mind. 8 Zeichen</span>
+      <input name="startpasswort" value="start-2026" minlength="8" required>
+    </label>
+    <label>Rolle
+      <select name="rolle">
+        <option value="pflege">Pflege</option>
+        <option value="leitung">Leitung (darf Zugänge verwalten)</option>
+      </select>
+    </label>
+    <button type="submit">Zugang anlegen</button>
+  </form>
+</section>
+{% endblock %}

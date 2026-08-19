@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block titel %}Passwort wählen – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="login-buehne">
+  <form class="login-karte" method="post">
+    <div class="login-logo">🔑</div>
+    {% if erzwungen %}
+      <h1>Hallo {{ g.benutzer.anzeigename }}!</h1>
+      <p class="login-untertitel">
+        Willkommen im Pflegeplaner. Wähle zuerst dein eigenes Passwort –
+        damit meldest du dich ab jetzt an.
+      </p>
+    {% else %}
+      <h1>Passwort ändern</h1>
+      <p class="login-untertitel">Neues Passwort für {{ g.benutzer.anzeigename }}.</p>
+    {% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="text" name="benutzername" value="{{ g.benutzer.benutzername }}"
+           autocomplete="username" readonly hidden>
+    {% if not erzwungen %}
+    <label>Aktuelles Passwort
+      <span class="pw-feld">
+        <input type="password" name="aktuelles_passwort" autocomplete="current-password" required>
+        <button type="button" class="pw-auge" aria-label="Passwort anzeigen" title="Passwort anzeigen">👁</button>
+      </span>
+    </label>
+    {% endif %}
+    <label>Neues Passwort <span class="feld-hinweis">(mindestens 8 Zeichen)</span>
+      <span class="pw-feld">
+        <input type="password" name="neues_passwort" autocomplete="new-password"
+               minlength="8" required autofocus>
+        <button type="button" class="pw-auge" aria-label="Passwort anzeigen" title="Passwort anzeigen">👁</button>
+      </span>
+    </label>
+    <label>Neues Passwort wiederholen
+      <span class="pw-feld">
+        <input type="password" name="wiederholung" autocomplete="new-password" minlength="8" required>
+        <button type="button" class="pw-auge" aria-label="Passwort anzeigen" title="Passwort anzeigen">👁</button>
+      </span>
+    </label>
+    <button type="submit">Passwort speichern</button>
+  </form>
+</div>
+{% endblock %}
+{% block skripte %}
+<script src="{{ url_for('static', filename='passwort-auge.js') }}"></script>
+{% endblock %}

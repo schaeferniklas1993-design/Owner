@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block titel %}Kalender – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <div>
+    <h1>Kalender</h1>
+    <div class="karten-hinweis">KW {{ kalenderwoche }} · {{ zeitraum }}</div>
+  </div>
+  <div class="zeitwahl">
+    <a class="zeit-pfeil" href="{{ url_for('kalender', woche=vorwoche) }}" aria-label="Vorherige Woche">‹</a>
+    <a class="knopf-sekundaer" href="{{ url_for('kalender', woche=diese_woche) }}">Heute</a>
+    <a class="zeit-pfeil" href="{{ url_for('kalender', woche=naechste_woche) }}" aria-label="Nächste Woche">›</a>
+  </div>
+</div>
+
+<div class="wochenraster">
+  {% for tag in tage %}
+  <div class="tag-karte {{ 'ist-heute' if tag.heute }} {{ 'wochenende' if tag.wochenende }} {{ 'leer' if not tag.termine and not tag.heute }}">
+    <div class="tag-kopf">
+      <span class="tag-name">{{ tag.name }}</span>
+      <span class="tag-datum">{{ tag.kurz }}</span>
+    </div>
+    <div class="tag-termine">
+      {% for t in tag.termine %}
+      <div class="termin {{ 'erledigt' if t.erledigt }}">
+        <span class="termin-titel">
+          {{ tsymbol(t.art) }}
+          {% if t.uhrzeit %}<span class="termin-zeit">{{ t.uhrzeit }}</span>{% endif %}
+          {{ t.titel or t.art }}
+        </span>
+        {% if t.bewohner %}
+        <span class="termin-person">{{ t.bewohner }}{% if t.zimmer %} · Zi. {{ t.zimmer }}{% endif %}</span>
+        {% endif %}
+        {% if t.arzt %}
+        <span class="termin-person">{{ t.arzt }}{% if t.fachrichtung %} ({{ t.fachrichtung }}){% endif %}</span>
+        {% endif %}
+        {% if t.notiz %}<span class="termin-notiz">{{ t.notiz }}</span>{% endif %}
+        <div class="termin-werkzeuge">
+          <form class="inline-formular" method="post"
+                action="{{ url_for('termin_erledigt', termin_id=t.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button title="{{ 'Als offen markieren' if t.erledigt else 'Als erledigt markieren' }}">
+              {{ '↩' if t.erledigt else '✓' }}
+            </button>
+          </form>
+          <a href="{{ url_for('termin_bearbeiten', termin_id=t.id) }}" title="Bearbeiten">✎</a>
+          <form class="inline-formular" method="post"
+                action="{{ url_for('termin_loeschen', termin_id=t.id) }}"
+                onsubmit="return confirm('Diesen Termin wirklich löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button title="Löschen">✕</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <a class="tag-neu" href="#neuer-termin"
+       onclick="document.getElementById('datum-feld').value='{{ tag.iso }}'"
+       title="Termin an diesem Tag eintragen">＋</a>
+  </div>
+  {% endfor %}
+</div>
+
+<section class="karte" id="neuer-termin">
+  <h2>Neuer Termin</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Datum
+      <input type="date" name="datum" id="datum-feld" value="{{ heute }}" required
+             min="2026-01-01" max="2027-12-31">
+    </label>
+    <label>Uhrzeit <span class="feld-hinweis">optional</span>
+      <input type="time" name="uhrzeit" placeholder="10:00">
+    </label>
+    <label>Art
+      <select name="art">
+        {% for name, symbol in terminarten.items() %}
+        <option value="{{ name }}" {{ 'selected' if name == 'Arzttermin' }}>{{ symbol }} {{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Bewohner/in
+      <select name="bewohner_id">
+        <option value="">– keine Zuordnung –</option>
+        {% for b in bewohner %}
+        <option value="{{ b.id }}">{{ b.name }}{% if b.zimmer %} (Zi. {{ b.zimmer }}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Arzt / Therapeut
+      <select name="arzt_id">
+        <option value="">– keine Zuordnung –</option>
+        {% for a in aerzte %}
+        <option value="{{ a.id }}">{{ a.name }}{% if a.fachrichtung %} – {{ a.fachrichtung }}{% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Bezeichnung <span class="feld-hinweis">optional</span>
+      <input name="titel" placeholder="z. B. Kontrolle Zahnarzt">
+    </label>
+    <label class="breit">Notiz <span class="feld-hinweis">optional</span>
+      <input name="notiz" placeholder="z. B. nüchtern bleiben, Fahrdienst bestellt">
+    </label>
+    <button type="submit">Termin eintragen</button>
+  </form>
+  {% if not bewohner and not aerzte %}
+  <p class="karten-hinweis" style="margin-top:0.75rem">
+    Tipp: Lege zuerst unter <a href="{{ url_for('bewohner_verwalten') }}">Bewohner</a> und
+    <a href="{{ url_for('visiten') }}">Visiten</a> die Namen an – dann kannst du sie hier auswählen.
+  </p>
+  {% endif %}
+</section>
+{% endblock %}

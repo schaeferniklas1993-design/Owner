@@ -1,0 +1,311 @@
+/* Pflegeplaner – Oberfläche. Aufbau wie das Haushaltsbuch, eigene Farbrolle
+   (Grün statt Blau), damit beide Seiten klar unterscheidbar bleiben. */
+:root {
+  --flaeche: #f9f9f7;
+  --karte: #fcfcfb;
+  --tinte: #0b0b0b;
+  --tinte-2: #52514e;
+  --tinte-3: #898781;
+  --linie: #e1e0d9;
+  --akzent: #0f7b6c;
+  --akzent-hell: #e3f2ef;
+  --warnung: #b45309;
+  --warnung-hell: #fef3c7;
+  --gut: #006300;
+  --schlecht: #b93030;
+  --heute: #fff8e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --flaeche: #0d0d0d;
+    --karte: #1a1a19;
+    --tinte: #ffffff;
+    --tinte-2: #c3c2b7;
+    --tinte-3: #898781;
+    --linie: #2c2c2a;
+    --akzent: #2aa392;
+    --akzent-hell: #12302c;
+    --warnung: #f59e0b;
+    --warnung-hell: #3a2c10;
+    --gut: #0ca30c;
+    --schlecht: #e66767;
+    --heute: #2a2410;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--flaeche); color: var(--tinte);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px; line-height: 1.5;
+}
+h1 { font-size: 1.5rem; margin: 0; }
+h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
+a { color: var(--akzent); }
+
+/* Kopfzeile */
+.kopf {
+  background: var(--karte); border-bottom: 1px solid var(--linie);
+  position: sticky; top: 0; z-index: 10;
+}
+.kopf-innen {
+  max-width: 1180px; margin: 0 auto; padding: 0.6rem 1.25rem;
+  display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+}
+.marke { font-weight: 700; text-decoration: none; color: var(--tinte); }
+.kopf nav { display: flex; gap: 0.25rem; flex: 1; flex-wrap: wrap; }
+.kopf nav a {
+  text-decoration: none; color: var(--tinte-2);
+  padding: 0.35rem 0.75rem; border-radius: 8px; white-space: nowrap;
+}
+.kopf nav a:hover { background: var(--flaeche); }
+.kopf nav a.aktiv { background: var(--akzent-hell); color: var(--akzent); font-weight: 600; }
+.kopf-rechts { display: flex; align-items: center; gap: 0.75rem; }
+.person-chip {
+  background: var(--akzent); color: #fff; border-radius: 999px;
+  padding: 0.2rem 0.7rem; font-size: 0.85rem; font-weight: 600;
+}
+.abmelden { color: var(--tinte-3); text-decoration: none; font-size: 0.85rem; }
+
+.inhalt { max-width: 1180px; margin: 0 auto; padding: 1.25rem; }
+.fuss {
+  max-width: 1180px; margin: 0 auto; padding: 1.5rem 1.25rem 2rem;
+  color: var(--tinte-3); font-size: 0.78rem; text-align: center;
+}
+
+/* Meldungen */
+.meldung {
+  padding: 0.7rem 1rem; border-radius: 10px; margin-bottom: 1rem; font-size: 0.9rem;
+}
+.meldung-ok { background: var(--akzent-hell); color: var(--akzent); }
+.meldung-fehler { background: #fde8e8; color: var(--schlecht); }
+@media (prefers-color-scheme: dark) { .meldung-fehler { background: #3a1a1a; } }
+
+/* Karten und Seitenkopf */
+.karte {
+  background: var(--karte); border: 1px solid var(--linie);
+  border-radius: 14px; padding: 1rem 1.15rem; margin-bottom: 1.25rem;
+}
+.seitenkopf {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+}
+.karten-kopf {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem;
+}
+.karten-hinweis, .feld-hinweis { color: var(--tinte-3); font-size: 0.82rem; font-weight: 400; }
+.leer-hinweis { color: var(--tinte-3); font-style: italic; margin: 0.5rem 0; }
+.seiten-hinweis { color: var(--tinte-2); margin: 0 0 1rem; font-size: 0.92rem; }
+
+/* Zeitraum-Navigation */
+.zeitwahl { display: flex; align-items: center; gap: 0.75rem; }
+.zeit-pfeil {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 2.2rem; height: 2.2rem; border: 1px solid var(--linie);
+  border-radius: 10px; text-decoration: none; color: var(--tinte);
+  background: var(--karte); font-size: 1.1rem;
+}
+.zeit-pfeil:hover { background: var(--akzent-hell); }
+.zeit-titel { font-weight: 700; min-width: 12rem; text-align: center; }
+
+/* Formulare */
+input, select, textarea, button {
+  font: inherit; color: inherit;
+}
+input, select, textarea {
+  background: var(--flaeche); border: 1px solid var(--linie);
+  border-radius: 10px; padding: 0.55rem 0.7rem; width: 100%;
+}
+textarea { resize: vertical; min-height: 4.5rem; }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--akzent); outline-offset: 1px; border-color: transparent;
+}
+button {
+  background: var(--akzent); color: #fff; border: none; border-radius: 10px;
+  padding: 0.6rem 1.1rem; font-weight: 600; cursor: pointer;
+}
+button:hover { filter: brightness(1.08); }
+.formular {
+  display: grid; gap: 0.85rem;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  align-items: end;
+}
+.formular label { display: flex; flex-direction: column; gap: 0.3rem;
+  font-size: 0.85rem; color: var(--tinte-2); }
+.formular .breit { grid-column: 1 / -1; }
+.formular button { height: 2.6rem; }
+.kontrollkaestchen {
+  flex-direction: row !important; align-items: center; gap: 0.5rem !important;
+}
+.kontrollkaestchen input { width: auto; }
+
+.knopf-sekundaer {
+  display: inline-block; text-decoration: none; background: var(--karte);
+  color: var(--tinte); border: 1px solid var(--linie); border-radius: 10px;
+  padding: 0.45rem 0.9rem; font-size: 0.88rem; font-weight: 600;
+}
+.knopf-sekundaer:hover { background: var(--akzent-hell); }
+.knopf-klein { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+.knopf-still {
+  background: none; border: none; color: var(--tinte-3);
+  padding: 0.2rem 0.45rem; font-weight: 400; cursor: pointer; font-size: 1rem;
+}
+.knopf-still:hover { color: var(--schlecht); filter: none; }
+.inline-formular { display: inline; }
+
+/* ------------------------------------------------------------ Wochenkalender */
+.wochenraster {
+  display: grid; gap: 0.75rem;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.tag-karte {
+  background: var(--karte); border: 1px solid var(--linie);
+  border-radius: 12px; padding: 0.6rem; min-height: 9rem;
+  display: flex; flex-direction: column;
+}
+.tag-karte.ist-heute { border-color: var(--akzent); box-shadow: 0 0 0 1px var(--akzent); }
+.tag-karte.wochenende { background: var(--flaeche); }
+.tag-kopf {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 0.3rem; padding-bottom: 0.45rem; margin-bottom: 0.5rem;
+  border-bottom: 1px solid var(--linie);
+}
+.tag-name { font-weight: 700; font-size: 0.88rem; }
+.tag-datum { color: var(--tinte-3); font-size: 0.8rem; }
+.ist-heute .tag-name { color: var(--akzent); }
+.tag-termine { display: flex; flex-direction: column; gap: 0.4rem; flex: 1; }
+
+.termin {
+  border-left: 3px solid var(--akzent); border-radius: 6px;
+  background: var(--flaeche); padding: 0.4rem 0.5rem; font-size: 0.85rem;
+}
+.termin.erledigt { opacity: 0.5; }
+.termin.erledigt .termin-titel { text-decoration: line-through; }
+.termin-zeit { font-weight: 700; font-variant-numeric: tabular-nums; }
+.termin-titel { font-weight: 600; display: block; }
+.termin-person { color: var(--tinte-2); font-size: 0.82rem; display: block; }
+.termin-notiz { color: var(--tinte-3); font-size: 0.8rem; display: block; margin-top: 0.15rem; }
+.termin-werkzeuge {
+  display: flex; gap: 0.15rem; justify-content: flex-end; margin-top: 0.25rem;
+}
+.termin-werkzeuge a, .termin-werkzeuge button {
+  color: var(--tinte-3); text-decoration: none; background: none; border: none;
+  padding: 0.1rem 0.3rem; font-size: 0.9rem; cursor: pointer;
+}
+.termin-werkzeuge a:hover { color: var(--akzent); }
+.tag-neu {
+  margin-top: 0.4rem; text-align: center; color: var(--tinte-3);
+  text-decoration: none; font-size: 1.1rem; border: 1px dashed var(--linie);
+  border-radius: 8px; padding: 0.15rem;
+}
+.tag-neu:hover { border-color: var(--akzent); color: var(--akzent); }
+
+/* Tabellen */
+.tabelle { width: 100%; border-collapse: collapse; }
+.tabelle th {
+  text-align: left; font-size: 0.78rem; text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--tinte-3); font-weight: 600;
+  padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--linie);
+}
+.tabelle td { padding: 0.55rem 0.5rem; border-bottom: 1px solid var(--linie); }
+.tabelle tr:last-child td { border-bottom: none; }
+.rechts { text-align: right; }
+
+.marke-wichtig {
+  background: var(--warnung-hell); color: var(--warnung);
+  border-radius: 999px; padding: 0.1rem 0.5rem; font-size: 0.75rem; font-weight: 700;
+}
+.marke-still {
+  background: var(--flaeche); color: var(--tinte-3); border: 1px solid var(--linie);
+  border-radius: 999px; padding: 0.1rem 0.5rem; font-size: 0.75rem;
+}
+
+/* Übergaben */
+.schicht-block { margin-bottom: 1.25rem; }
+.schicht-block:last-child { margin-bottom: 0; }
+.schicht-titel {
+  font-weight: 700; padding-bottom: 0.4rem; margin-bottom: 0.6rem;
+  border-bottom: 2px solid var(--akzent-hell);
+}
+.uebergabe {
+  border-left: 3px solid var(--linie); padding: 0.5rem 0.75rem;
+  margin-bottom: 0.6rem; background: var(--flaeche); border-radius: 6px;
+}
+.uebergabe.wichtig { border-left-color: var(--warnung); background: var(--warnung-hell); }
+.uebergabe-kopf {
+  display: flex; gap: 0.5rem; align-items: baseline;
+  justify-content: space-between; margin-bottom: 0.2rem;
+}
+.uebergabe-person { font-weight: 600; }
+.uebergabe-fuss { color: var(--tinte-3); font-size: 0.78rem; margin-top: 0.3rem; }
+.uebergabe-text { white-space: pre-wrap; }
+
+/* Anmeldung */
+.login-buehne {
+  min-height: 82vh; display: flex; align-items: center; justify-content: center;
+}
+.login-karte {
+  background: var(--karte); border: 1px solid var(--linie); border-radius: 16px;
+  padding: 1.75rem; width: min(400px, 100%);
+  display: flex; flex-direction: column; gap: 0.9rem;
+}
+.login-logo { font-size: 2.5rem; text-align: center; }
+.login-karte h1 { text-align: center; }
+.login-untertitel { color: var(--tinte-2); text-align: center; margin: 0; font-size: 0.9rem; }
+.login-karte label {
+  display: flex; flex-direction: column; gap: 0.3rem;
+  font-size: 0.88rem; color: var(--tinte-2);
+}
+
+/* Passwortfeld mit Auge */
+.pw-feld { position: relative; display: block; }
+.pw-feld input { padding-right: 3rem; }
+.pw-auge {
+  position: absolute; top: 50%; right: 0.35rem; transform: translateY(-50%);
+  background: none; border: none; padding: 0.35rem 0.5rem;
+  font-size: 1.15rem; line-height: 1; cursor: pointer; opacity: 0.65;
+}
+.pw-auge:hover { opacity: 1; filter: none; }
+
+/* Schmale Bildschirme: Wochenraster wird zur Liste */
+@media (max-width: 900px) {
+  .wochenraster { grid-template-columns: 1fr; gap: 0.5rem; }
+  .tag-karte { min-height: 0; }
+  .zeit-titel { min-width: 0; font-size: 0.95rem; }
+
+  /* Kopfzeile: Name und Person oben, darunter die Navigation in einer
+     seitlich scrollbaren Zeile (statt in mehrere Zeilen umzubrechen). */
+  .kopf-innen { gap: 0.6rem; flex-wrap: wrap; padding: 0.5rem 0.9rem; }
+  .marke { font-size: 0.95rem; white-space: nowrap; }
+  .kopf nav {
+    order: 3; flex: 0 0 100%; flex-wrap: nowrap;
+    overflow-x: auto; gap: 0.15rem; padding-bottom: 0.15rem;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .kopf nav::-webkit-scrollbar { display: none; }
+  .kopf nav a { padding: 0.3rem 0.6rem; font-size: 0.9rem; }
+  .kopf-rechts { margin-left: auto; }
+  .abmelden { display: none; }
+
+  /* Tage ohne Termine schrumpfen zu einer schmalen Zeile, statt zu verschwinden */
+  .tag-karte.leer { padding: 0.35rem 0.6rem; opacity: 0.75; }
+  .tag-karte.leer .tag-kopf { border: none; padding: 0; margin: 0; }
+  .tag-karte.leer .tag-termine { display: none; }
+  .tag-karte.leer .tag-neu {
+    margin: 0; border: none; padding: 0; font-size: 1rem; width: 2rem;
+  }
+  .tag-karte.leer { flex-direction: row; align-items: center; gap: 0.5rem; }
+  .tag-karte.leer .tag-kopf { flex: 1; }
+
+  .tabelle thead { display: none; }
+  .tabelle tr {
+    display: block; border-bottom: 1px solid var(--linie);
+    padding: 0.6rem 0;
+  }
+  .tabelle td { display: block; border: none; padding: 0.15rem 0; }
+  .tabelle td[data-titel]::before {
+    content: attr(data-titel) ": "; color: var(--tinte-3); font-size: 0.8rem;
+  }
+  .rechts { text-align: left; }
+}

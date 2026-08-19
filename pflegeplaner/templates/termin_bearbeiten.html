@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titel %}Termin bearbeiten – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <h1>Termin bearbeiten</h1>
+  <a class="knopf-sekundaer" href="{{ url_for('kalender', woche=termin.datum) }}">Zurück</a>
+</div>
+
+<section class="karte">
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Datum
+      <input type="date" name="datum" value="{{ termin.datum }}" required
+             min="2026-01-01" max="2027-12-31">
+    </label>
+    <label>Uhrzeit <span class="feld-hinweis">optional</span>
+      <input type="time" name="uhrzeit" value="{{ termin.uhrzeit }}">
+    </label>
+    <label>Art
+      <select name="art">
+        {% for name, symbol in terminarten.items() %}
+        <option value="{{ name }}" {{ 'selected' if name == termin.art }}>{{ symbol }} {{ name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Bewohner/in
+      <select name="bewohner_id">
+        <option value="">– keine Zuordnung –</option>
+        {% for b in bewohner %}
+        <option value="{{ b.id }}" {{ 'selected' if b.id == termin.bewohner_id }}>
+          {{ b.name }}{% if b.zimmer %} (Zi. {{ b.zimmer }}){% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Arzt / Therapeut
+      <select name="arzt_id">
+        <option value="">– keine Zuordnung –</option>
+        {% for a in aerzte %}
+        <option value="{{ a.id }}" {{ 'selected' if a.id == termin.arzt_id }}>
+          {{ a.name }}{% if a.fachrichtung %} – {{ a.fachrichtung }}{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Bezeichnung
+      <input name="titel" value="{{ termin.titel }}">
+    </label>
+    <label class="breit">Notiz
+      <input name="notiz" value="{{ termin.notiz }}">
+    </label>
+    <button type="submit">Änderungen speichern</button>
+  </form>
+</section>
+{% endblock %}

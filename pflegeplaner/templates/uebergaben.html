@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block titel %}Übergaben – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf">
+  <div>
+    <h1>Übergaben</h1>
+    <div class="karten-hinweis">{{ tag_name }}, {{ tag|datum_de }} · {{ anzahl }} Eintrag{{ 'ung' if anzahl == 1 else 'ungen' }}</div>
+  </div>
+  <div class="zeitwahl">
+    <a class="zeit-pfeil" href="{{ url_for('uebergaben', datum=vortag) }}" aria-label="Vortag">‹</a>
+    <a class="knopf-sekundaer" href="{{ url_for('uebergaben', datum=heute) }}">Heute</a>
+    <a class="zeit-pfeil" href="{{ url_for('uebergaben', datum=folgetag) }}" aria-label="Folgetag">›</a>
+  </div>
+</div>
+
+<section class="karte">
+  <h2>Neue Übergabe</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Datum
+      <input type="date" name="datum" value="{{ tag }}" required
+             min="2026-01-01" max="2027-12-31">
+    </label>
+    <label>Schicht
+      <select name="schicht">
+        {% for s in schichten %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Betrifft Bewohner/in <span class="feld-hinweis">optional</span>
+      <select name="bewohner_id">
+        <option value="">– allgemein –</option>
+        {% for b in bewohner %}
+        <option value="{{ b.id }}">{{ b.name }}{% if b.zimmer %} (Zi. {{ b.zimmer }}){% endif %}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="kontrollkaestchen">
+      <input type="checkbox" name="wichtig" value="1"> Als wichtig hervorheben
+    </label>
+    <label class="breit">Text
+      <textarea name="text" required
+                placeholder="z. B. Frau Müller hat wenig getrunken – bitte im Blick behalten. Neue Salbe ab morgen 2× täglich."></textarea>
+    </label>
+    <button type="submit">Übergabe speichern</button>
+  </form>
+</section>
+
+<section class="karte">
+  <h2>{{ tag_name }}, {{ tag|datum_de }}</h2>
+  {% if anzahl %}
+    {% for schicht in schichten %}
+    {% if nach_schicht[schicht] %}
+    <div class="schicht-block">
+      <div class="schicht-titel">{{ schicht }} · {{ nach_schicht[schicht]|length }}</div>
+      {% for e in nach_schicht[schicht] %}
+      <div class="uebergabe {{ 'wichtig' if e.wichtig }}">
+        <div class="uebergabe-kopf">
+          <span class="uebergabe-person">
+            {% if e.bewohner %}
+              {{ e.bewohner }}{% if e.zimmer %} <span class="marke-still">Zi. {{ e.zimmer }}</span>{% endif %}
+            {% else %}Allgemein{% endif %}
+          </span>
+          {% if e.wichtig %}<span class="marke-wichtig">wichtig</span>{% endif %}
+        </div>
+        <div class="uebergabe-text">{{ e.text }}</div>
+        <div class="uebergabe-fuss">
+          {{ e.verfasser }} · {{ e.erstellt_am[11:16] }} Uhr
+          {% if e.verfasser_id == g.benutzer.id or g.benutzer.rolle == 'leitung' %}
+          <form class="inline-formular" method="post"
+                action="{{ url_for('uebergabe_loeschen', eintrag_id=e.id) }}"
+                onsubmit="return confirm('Diesen Eintrag wirklich löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="knopf-still" title="Löschen">✕</button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% endfor %}
+  {% else %}
+  <p class="leer-hinweis">Für diesen Tag ist noch nichts eingetragen.</p>
+  {% endif %}
+</section>
+{% endblock %}

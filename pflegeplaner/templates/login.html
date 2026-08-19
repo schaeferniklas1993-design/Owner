@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block titel %}Anmelden – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="login-buehne">
+  <form class="login-karte" method="post">
+    <div class="login-logo">🗓</div>
+    <h1>Pflegeplaner</h1>
+    <p class="login-untertitel">Kalender, Visiten und Übergaben für das Team.</p>
+    {% if fehler %}<div class="meldung meldung-fehler">{{ fehler }}</div>{% endif %}
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Benutzername
+      <input name="benutzername" autocomplete="username" autofocus required>
+    </label>
+    <label>Passwort
+      <span class="pw-feld">
+        <input type="password" name="passwort" autocomplete="current-password" required>
+        <button type="button" class="pw-auge" aria-pressed="false"
+                aria-label="Passwort anzeigen" title="Passwort anzeigen">👁</button>
+      </span>
+    </label>
+    <button type="submit">Anmelden</button>
+  </form>
+</div>
+{% endblock %}
+{% block skripte %}
+<script src="{{ url_for('static', filename='passwort-auge.js') }}"></script>
+{% endblock %}

@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block titel %}Visiten – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf"><h1>Visiten</h1></div>
+
+<p class="seiten-hinweis">
+  Hier stehen alle Ärztinnen, Ärzte und Therapeuten mit Kontaktdaten und festem
+  Visitentag. Wer hier eingetragen ist, erscheint im Kalender im Auswahlmenü.
+</p>
+
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Anstehend – nächste 14 Tage</h2>
+    <a class="knopf-sekundaer" href="{{ url_for('kalender') }}">Zum Kalender</a>
+  </div>
+  {% if anstehend %}
+  <table class="tabelle">
+    <thead>
+      <tr><th>Datum</th><th>Zeit</th><th>Bewohner/in</th><th>Arzt / Therapeut</th><th>Anlass</th></tr>
+    </thead>
+    <tbody>
+      {% for t in anstehend %}
+      <tr>
+        <td data-titel="Datum">{{ t.datum|datum_de }}</td>
+        <td data-titel="Zeit">{{ t.uhrzeit or 'ganztägig' }}</td>
+        <td data-titel="Bewohner/in">
+          {{ t.bewohner or '–' }}{% if t.zimmer %} <span class="marke-still">Zi. {{ t.zimmer }}</span>{% endif %}
+        </td>
+        <td data-titel="Arzt">{{ t.arzt or '–' }}{% if t.fachrichtung %} ({{ t.fachrichtung }}){% endif %}</td>
+        <td data-titel="Anlass">{{ tsymbol(t.art) }} {{ t.titel or t.art }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">In den nächsten 14 Tagen sind keine Visiten oder Arzttermine eingetragen.</p>
+  {% endif %}
+</section>
+
+<section class="karte">
+  <h2>Ärzte und Therapeuten</h2>
+  {% if aerzte %}
+  <table class="tabelle">
+    <thead>
+      <tr><th>Name</th><th>Fachrichtung</th><th>Telefon</th><th>Visitentag</th><th>Hinweis</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for a in aerzte %}
+      <tr>
+        <td data-titel="Name"><strong>{{ a.name }}</strong></td>
+        <td data-titel="Fachrichtung">{{ a.fachrichtung or '–' }}</td>
+        <td data-titel="Telefon">
+          {% if a.telefon %}<a href="tel:{{ a.telefon }}">{{ a.telefon }}</a>{% else %}–{% endif %}
+        </td>
+        <td data-titel="Visitentag">
+          {% if a.visitentag %}<span class="marke-still">{{ a.visitentag }}</span>{% else %}–{% endif %}
+        </td>
+        <td data-titel="Hinweis">{{ a.hinweis or '–' }}</td>
+        <td class="rechts">
+          <form class="inline-formular" method="post"
+                onsubmit="return confirm('{{ a.name }} wirklich aus der Liste entfernen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="aktion" value="loeschen">
+            <input type="hidden" name="id" value="{{ a.id }}">
+            <button class="knopf-still" title="Entfernen">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">Noch niemand eingetragen. Lege unten den ersten Eintrag an.</p>
+  {% endif %}
+</section>
+
+<section class="karte">
+  <h2>Neuer Eintrag</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="neu">
+    <label>Name
+      <input name="name" required placeholder="z. B. Dr. Schmidt">
+    </label>
+    <label>Fachrichtung
+      <input name="fachrichtung" placeholder="z. B. Hausarzt, Zahnarzt">
+    </label>
+    <label>Telefon
+      <input name="telefon" inputmode="tel" placeholder="z. B. 0201 123456">
+    </label>
+    <label>Fester Visitentag <span class="feld-hinweis">optional</span>
+      <select name="visitentag">
+        <option value="">– kein fester Tag –</option>
+        {% for tag in wochentage %}
+        <option value="{{ tag }}">{{ tag }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="breit">Hinweis <span class="feld-hinweis">optional</span>
+      <input name="hinweis" placeholder="z. B. Visite immer 10 Uhr, Anmeldung per Fax">
+    </label>
+    <button type="submit">Anlegen</button>
+  </form>
+</section>
+{% endblock %}

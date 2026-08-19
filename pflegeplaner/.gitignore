@@ -1,0 +1,5 @@
+pflegeplaner.db
+.secret_key
+__pycache__/
+sicherungen/
+.venv/

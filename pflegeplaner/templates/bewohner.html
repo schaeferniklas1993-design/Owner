@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block titel %}Bewohner – Pflegeplaner{% endblock %}
+{% block inhalt %}
+<div class="seitenkopf"><h1>Bewohnerinnen und Bewohner</h1></div>
+
+<p class="seiten-hinweis">
+  Wer hier steht, lässt sich im Kalender und in den Übergaben auswählen.
+  Beim Auszug wird der Eintrag nicht gelöscht, sondern nur ausgeblendet –
+  so bleiben frühere Einträge nachvollziehbar.
+</p>
+
+<section class="karte">
+  <h2>Aktuelle Bewohnerliste</h2>
+  {% if bewohner %}
+  <table class="tabelle">
+    <thead><tr><th>Zimmer</th><th>Name</th><th>Wohnbereich</th><th>Hinweis</th><th></th></tr></thead>
+    <tbody>
+      {% for b in bewohner %}
+      <tr>
+        <td data-titel="Zimmer">{{ b.zimmer or '–' }}</td>
+        <td data-titel="Name"><strong>{{ b.name }}</strong></td>
+        <td data-titel="Wohnbereich">{{ b.wohnbereich or '–' }}</td>
+        <td data-titel="Hinweis">{{ b.hinweis or '–' }}</td>
+        <td class="rechts">
+          <form class="inline-formular" method="post"
+                onsubmit="return confirm('{{ b.name }} als ausgezogen markieren?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="aktion" value="ausziehen">
+            <input type="hidden" name="id" value="{{ b.id }}">
+            <button class="knopf-still" title="Als ausgezogen markieren">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">Noch niemand eingetragen.</p>
+  {% endif %}
+</section>
+
+<section class="karte">
+  <h2>Neuer Eintrag</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="neu">
+    <label>Name
+      <input name="name" required placeholder="z. B. Herr Meier">
+    </label>
+    <label>Zimmer
+      <input name="zimmer" placeholder="z. B. 214">
+    </label>
+    <label>Wohnbereich
+      <input name="wohnbereich" placeholder="z. B. WB 2">
+    </label>
+    <label class="breit">Hinweis <span class="feld-hinweis">optional</span>
+      <input name="hinweis" placeholder="z. B. Diabetiker, Rollstuhl">
+    </label>
+    <button type="submit">Anlegen</button>
+  </form>
+</section>
+{% endblock %}

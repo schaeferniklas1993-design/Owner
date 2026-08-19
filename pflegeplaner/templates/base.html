@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titel %}Pflegeplaner{% endblock %}</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Pflegeplaner">
+  <meta name="theme-color" content="#0f7b6c">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if g.benutzer %}
+<header class="kopf">
+  <div class="kopf-innen">
+    <a class="marke" href="{{ url_for('kalender') }}">🗓 Pflegeplaner</a>
+    <nav>
+      <a href="{{ url_for('kalender') }}" class="{{ 'aktiv' if request.endpoint in ('kalender', 'termin_bearbeiten') }}">Kalender</a>
+      <a href="{{ url_for('visiten') }}" class="{{ 'aktiv' if request.endpoint == 'visiten' }}">Visiten</a>
+      <a href="{{ url_for('uebergaben') }}" class="{{ 'aktiv' if request.endpoint == 'uebergaben' }}">Übergaben</a>
+      <a href="{{ url_for('bewohner_verwalten') }}" class="{{ 'aktiv' if request.endpoint == 'bewohner_verwalten' }}">Bewohner</a>
+      {% if g.benutzer.rolle == 'leitung' %}
+      <a href="{{ url_for('team') }}" class="{{ 'aktiv' if request.endpoint == 'team' }}">Team</a>
+      {% endif %}
+    </nav>
+    <div class="kopf-rechts">
+      <span class="person-chip">{{ g.benutzer.anzeigename }}</span>
+      <a class="abmelden" href="{{ url_for('abmelden') }}">Abmelden</a>
+    </div>
+  </div>
+</header>
+{% endif %}
+
+<main class="inhalt">
+  {% with meldungen = get_flashed_messages(with_categories=true) %}
+    {% for kategorie, text in meldungen %}
+      <div class="meldung meldung-{{ kategorie }}">{{ text }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block inhalt %}{% endblock %}
+</main>
+
+{% if g.benutzer %}
+<footer class="fuss">Pflegeplaner · Version {{ app_version }}</footer>
+{% endif %}
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+  }
+</script>
+{% block skripte %}{% endblock %}
+</body>
+</html>
