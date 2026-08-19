@@ -1,0 +1,30 @@
+# RustDesk – eigener Vermittlungsserver für Fernwartung.
+#
+# Zwei Dienste:
+#   hbbs = Vermittlung (verbindet die Geräte miteinander)
+#   hbbr = Weiterleitung (springt ein, wenn keine Direktverbindung möglich ist)
+#
+# Der Heim-PC meldet sich von sich aus bei diesem Server an. Deshalb ist am
+# heimischen Router KEINE Portfreigabe nötig – das ist der sichere Weg.
+#
+# Start:  cd /opt/rustdesk && sudo docker compose up -d
+services:
+  hbbs:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbs
+    command: hbbs -r DEINE-SERVER-IP:21117
+    restart: unless-stopped
+    network_mode: host          # RustDesk braucht mehrere Ports direkt
+    volumes:
+      - ./daten:/root
+    depends_on:
+      - hbbr
+
+  hbbr:
+    image: rustdesk/rustdesk-server:latest
+    container_name: rustdesk-hbbr
+    command: hbbr
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - ./daten:/root
