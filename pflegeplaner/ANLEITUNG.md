@@ -89,16 +89,17 @@ Unter **Team** (nur für die Rolle „Leitung“ sichtbar):
 2. Rolle wählen: *Pflege* (normal) oder *Leitung* (darf Zugänge verwalten)
 3. Startpasswort weitergeben – beim ersten Anmelden muss es geändert werden
 
-## Schritt 8: Tägliche Sicherung einrichten
+## Schritt 8: Sicherung prüfen
+
+Die nächtliche Sicherung (3:15 Uhr, 30 Tage Aufbewahrung) richtet das
+Setup-Skript bereits ein. Nur kurz kontrollieren:
 
 ```bash
-sudo cp /opt/pflegeplaner/deploy/sicherung.sh /opt/pflegeplaner/sicherung.sh
-sudo chmod +x /opt/pflegeplaner/sicherung.sh
-( sudo crontab -l 2>/dev/null; echo '15 3 * * * /opt/pflegeplaner/sicherung.sh' ) | sudo crontab -
+sudo crontab -l | grep pflegeplaner
+sudo /opt/pflegeplaner/sicherung.sh && ls -lh /opt/pflegeplaner/sicherungen
 ```
 
-Prüfen: `sudo crontab -l` – dort muss die Zeile stehen.
-Einmal testen: `sudo /opt/pflegeplaner/sicherung.sh && ls -lh /opt/pflegeplaner/sicherungen`
+Die erste Zeile muss den Eintrag zeigen, die zweite eine `.db.gz`-Datei.
 
 **Zusätzlich dringend empfohlen:** In der Hetzner-Konsole beim Server
 **Backups aktivieren** (~0,75 €/Monat). Das sichert den kompletten Server

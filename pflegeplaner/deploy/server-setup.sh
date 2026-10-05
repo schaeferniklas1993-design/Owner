@@ -24,31 +24,33 @@ if [[ -z "$ADRESSE" ]]; then
     exit 1
 fi
 
-echo "==> [1/6] Benutzerkonto und Ordner anlegen"
+echo "==> [1/7] Benutzerkonto und Ordner anlegen"
 id -u pflege >/dev/null 2>&1 || useradd --system --home "$ZIEL" --shell /usr/sbin/nologin pflege
 mkdir -p "$ZIEL"
 
-echo "==> [2/6] Programmdateien kopieren (Datenbank bleibt unberührt)"
+echo "==> [2/7] Programmdateien kopieren (Datenbank bleibt unberührt)"
 (cd "$QUELLE" && tar --exclude .venv --exclude pflegeplaner.db --exclude '.secret_key' \
     --exclude __pycache__ --exclude deploy -cf - .) | (cd "$ZIEL" && tar -xf -)
 
-echo "==> [3/6] Python-Umgebung einrichten"
-apt-get install -y -qq python3-venv >/dev/null
+echo "==> [3/7] Python-Umgebung einrichten"
+apt-get install -y -qq python3-venv sqlite3 >/dev/null 2>&1 || {
+    apt-get update -qq && apt-get install -y -qq python3-venv sqlite3 >/dev/null
+}
 [[ -d "$ZIEL/.venv" ]] || python3 -m venv "$ZIEL/.venv"
 "$ZIEL/.venv/bin/pip" install -q --upgrade pip
 "$ZIEL/.venv/bin/pip" install -q -r "$ZIEL/requirements.txt"
 
-echo "==> [4/6] Datenbank anlegen bzw. aktualisieren"
+echo "==> [4/7] Datenbank anlegen bzw. aktualisieren"
 chown -R pflege:pflege "$ZIEL"
 sudo -u pflege "$ZIEL/.venv/bin/python" "$ZIEL/database.py"
 
-echo "==> [5/6] Dienst einrichten"
+echo "==> [5/7] Dienst einrichten"
 cp "$QUELLE/deploy/pflegeplaner.service" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable -q pflegeplaner
 systemctl restart pflegeplaner
 
-echo "==> [6/6] HTTPS über Caddy"
+echo "==> [6/7] HTTPS über Caddy"
 if ! grep -q "$ADRESSE" /etc/caddy/Caddyfile 2>/dev/null; then
     cat >> /etc/caddy/Caddyfile <<EOF
 
@@ -60,6 +62,17 @@ EOF
     echo "    Adresse $ADRESSE in Caddy eingetragen."
 else
     echo "    Adresse $ADRESSE steht bereits in Caddy."
+fi
+
+echo "==> [7/7] Tägliche Sicherung einrichten"
+cp "$QUELLE/deploy/sicherung.sh" "$ZIEL/sicherung.sh"
+chmod +x "$ZIEL/sicherung.sh"
+# Cron-Eintrag nur ergänzen, wenn er noch fehlt (Skript ist wiederholbar).
+if ! crontab -l 2>/dev/null | grep -q "$ZIEL/sicherung.sh"; then
+    ( crontab -l 2>/dev/null; echo "15 3 * * * $ZIEL/sicherung.sh" ) | crontab -
+    echo "    Nächtliche Sicherung um 3:15 Uhr eingerichtet."
+else
+    echo "    Nächtliche Sicherung war bereits eingerichtet."
 fi
 
 sleep 2
