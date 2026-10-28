@@ -93,6 +93,23 @@
     }));
   });
 
+  // Rückfalltage: kleine Markierung auf der Grundlinie. So sieht man auf
+  // einen Blick, ob sie mit Ausschlägen bei der Dosis zusammenfallen.
+  const warm = farbe("--warm", "#e8871e");
+  const grundlinie = rand.oben + innenH;
+  daten.forEach((d, i) => {
+    if (!d.konsum) return;
+    svg.append(el("line", {
+      x1: x(i), x2: x(i), y1: rand.oben, y2: grundlinie,
+      stroke: warm, "stroke-width": 1, opacity: 0.35
+    }));
+    svg.append(el("path", {
+      d: `M ${x(i)} ${grundlinie - 7} L ${x(i) - 5} ${grundlinie + 2}` +
+         ` L ${x(i) + 5} ${grundlinie + 2} Z`,
+      fill: warm
+    }));
+  });
+
   // Datumsbeschriftung: nur einige, damit nichts überlappt.
   const schritt = Math.max(1, Math.round(daten.length / 7));
   daten.forEach((d, i) => {

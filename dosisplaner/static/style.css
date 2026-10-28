@@ -216,6 +216,15 @@ button:hover { background: var(--akzent-dunkel); }
           padding: 0.7rem 1rem; margin-bottom: 0.6rem; }
 .erfolg-datum { color: var(--tinte-3); font-size: 0.78rem; }
 
+/* Rückfall-Einträge: bewusst neutral gehalten – nicht grün wie die Erfolge,
+   aber auch nicht rot. Es ist eine Notiz, kein Alarm. */
+.vorfall { background: var(--flaeche); border: 1px solid var(--linie);
+           border-radius: 14px; padding: 0.75rem 1rem; margin-bottom: 0.6rem; }
+.vorfall-kopf { display: flex; align-items: baseline; gap: 0.5rem;
+                flex-wrap: wrap; color: var(--tinte-2); font-size: 0.86rem; }
+.vorfall-kopf .datum { color: var(--tinte-3); font-size: 0.78rem; }
+.vorfall-kopf form { margin-left: auto; }
+
 /* Anmeldung */
 .login-buehne { min-height: 82vh; display: flex; align-items: center; justify-content: center; }
 .login-karte {

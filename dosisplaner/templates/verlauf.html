@@ -31,6 +31,12 @@
     <span class="legende-eintrag">
       <span class="legende-punkt" style="background: var(--ist)"></span> Ist (tatsächlich)
     </span>
+    {% if reihe|selectattr('konsum')|list %}
+    <span class="legende-eintrag">
+      <span style="color: var(--warm)">▲</span>
+      <a href="{{ url_for('konsum') }}">Rückfall eingetragen</a>
+    </span>
+    {% endif %}
   </div>
 </section>
 

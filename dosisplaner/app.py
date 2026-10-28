@@ -16,9 +16,10 @@ from flask import (Flask, Response, abort, flash, g, redirect, render_template,
 from werkzeug.security import check_password_hash, generate_password_hash
 
 import database
-from database import BEFINDEN, SYMPTOME, datum_de, mg, soll_fuer
+from database import (AUSLOESER, BEFINDEN, SUBSTANZEN, SUBSTITUTE, SYMPTOME,
+                      VERGABE, datum_de, mg, soll_fuer, soll_subst_fuer)
 
-VERSION = "2026.10.28-1 · Soll/Ist, Verlauf, Rückblick"
+VERSION = "2026.10.28-2 · Substitution und Rückfälle"
 
 MAX_LOGIN_VERSUCHE = 8
 
@@ -59,6 +60,10 @@ app.jinja_env.globals["csrf_token"] = lambda: session.get("csrf_token", "")
 app.jinja_env.globals["app_version"] = VERSION
 app.jinja_env.globals["BEFINDEN"] = BEFINDEN
 app.jinja_env.globals["SYMPTOME"] = SYMPTOME
+app.jinja_env.globals["SUBSTITUTE"] = SUBSTITUTE
+app.jinja_env.globals["VERGABE"] = VERGABE
+app.jinja_env.globals["SUBSTANZEN"] = SUBSTANZEN
+app.jinja_env.globals["AUSLOESER"] = AUSLOESER
 
 
 @app.before_request
@@ -176,6 +181,14 @@ def _verlauf(tage: int = 60) -> list:
             (start.isoformat(), heute.isoformat()),
         )
     }
+    # Rückfalltage werden im Diagramm als Markierung gezeigt – so sieht man,
+    # ob sie mit Ausschlägen bei der Dosis zusammenfallen.
+    konsum_tage = {
+        z["datum"] for z in g.db.execute(
+            "SELECT DISTINCT datum FROM konsum WHERE datum BETWEEN ? AND ?",
+            (start.isoformat(), heute.isoformat()),
+        )
+    }
     reihe = []
     for versatz in range(tage):
         tag = start + datetime.timedelta(days=versatz)
@@ -192,6 +205,7 @@ def _verlauf(tage: int = 60) -> list:
             "befinden": eintrag["befinden"] if eintrag else None,
             "symptome": eintrag["symptome"] if eintrag else "",
             "notiz": eintrag["notiz"] if eintrag else "",
+            "konsum": iso in konsum_tage,
             "heute": iso == heute.isoformat(),
         })
     return reihe
@@ -304,6 +318,16 @@ def start():
         ermutigung=ERMUTIGUNGEN[datetime.date.today().toordinal() % len(ERMUTIGUNGEN)],
         hat_plan=bool(g.db.execute(
             "SELECT 1 FROM plan_phasen LIMIT 1").fetchone()),
+        # Substitutionsmittel, für die heute noch nichts eingetragen ist –
+        # aber nur solche, für die überhaupt eine Verordnung hinterlegt ist.
+        subst_offen=[
+            name for schluessel, (name, _) in SUBSTITUTE.items()
+            if g.db.execute("SELECT 1 FROM subst_plan WHERE mittel = ? LIMIT 1",
+                            (schluessel,)).fetchone()
+            and not g.db.execute(
+                "SELECT 1 FROM subst_eintraege WHERE mittel = ? AND datum = ?",
+                (schluessel, heute)).fetchone()
+        ],
         erfolge=g.db.execute(
             "SELECT * FROM erfolge ORDER BY datum DESC, id DESC LIMIT 5").fetchall(),
     )
@@ -417,6 +441,253 @@ def verlauf():
         befinden_schnitt=round(sum(befinden_werte) / len(befinden_werte), 1)
                          if befinden_werte else None,
         kennzahlen=_kennzahlen(),
+    )
+
+
+# ------------------------------------------------------------- Substitution
+
+def _subst_reihe(mittel: str, tage: int) -> list:
+    """Verordnet und tatsächlich, Tag für Tag, für ein Substitutionsmittel."""
+    heute = datetime.date.today()
+    start = heute - datetime.timedelta(days=tage - 1)
+    eintraege = {
+        z["datum"]: z for z in g.db.execute(
+            "SELECT * FROM subst_eintraege WHERE mittel = ? AND datum BETWEEN ? AND ?",
+            (mittel, start.isoformat(), heute.isoformat()),
+        )
+    }
+    reihe = []
+    for versatz in range(tage):
+        tag = start + datetime.timedelta(days=versatz)
+        iso = tag.isoformat()
+        eintrag = eintraege.get(iso)
+        soll = soll_subst_fuer(g.db, mittel, iso)
+        ist = eintrag["ist_mg"] if eintrag else None
+        reihe.append({
+            "datum": iso,
+            "kurz": f"{tag.day:02d}.{tag.month:02d}.",
+            "soll": soll,
+            "ist": ist,
+            "differenz": (ist - soll) if (ist is not None and soll is not None) else None,
+            "vergabe": eintrag["vergabe"] if eintrag else "",
+            "notiz": eintrag["notiz"] if eintrag else "",
+            "heute": iso == heute.isoformat(),
+        })
+    return reihe
+
+
+@app.route("/substitution", methods=["GET", "POST"])
+@anmeldung_erforderlich
+def substitution():
+    if request.method == "POST":
+        try:
+            aktion = request.form.get("aktion")
+            mittel = request.form.get("mittel", "")
+            if mittel not in SUBSTITUTE:
+                raise ValueError("Unbekanntes Mittel.")
+
+            if aktion == "eintrag":
+                datum = datetime.date.fromisoformat(request.form["datum"]).isoformat()
+                ist = float(request.form["ist_mg"].replace(",", "."))
+                if ist < 0:
+                    raise ValueError("Die Dosis kann nicht unter 0 liegen.")
+                vergabe = request.form.get("vergabe", "")
+                if vergabe and vergabe not in VERGABE:
+                    raise ValueError("Unbekannte Vergabeform.")
+                g.db.execute(
+                    """INSERT INTO subst_eintraege (datum, mittel, ist_mg, vergabe, notiz)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(datum, mittel) DO UPDATE SET
+                         ist_mg = excluded.ist_mg, vergabe = excluded.vergabe,
+                         notiz = excluded.notiz""",
+                    (datum, mittel, ist, vergabe, request.form.get("notiz", "").strip()),
+                )
+                flash(f"{SUBSTITUTE[mittel][0]} eingetragen.", "ok")
+
+            elif aktion == "verordnung":
+                von = datetime.date.fromisoformat(request.form["von"])
+                bis = datetime.date.fromisoformat(request.form["bis"])
+                if bis < von:
+                    raise ValueError("Das Ende liegt vor dem Beginn.")
+                soll = float(request.form["soll_mg"].replace(",", "."))
+                if soll < 0:
+                    raise ValueError("Die Dosis kann nicht unter 0 liegen.")
+                g.db.execute(
+                    "INSERT INTO subst_plan (mittel, von, bis, soll_mg, notiz)"
+                    " VALUES (?, ?, ?, ?, ?)",
+                    (mittel, von.isoformat(), bis.isoformat(), soll,
+                     request.form.get("notiz", "").strip()),
+                )
+                flash("Verordnung festgehalten.", "ok")
+
+            elif aktion == "verordnung_loeschen":
+                g.db.execute("DELETE FROM subst_plan WHERE id = ?", (request.form["id"],))
+                flash("Eintrag gelöscht.", "ok")
+
+            elif aktion == "eintrag_loeschen":
+                g.db.execute("DELETE FROM subst_eintraege WHERE id = ?",
+                             (request.form["id"],))
+                flash("Eintrag gelöscht.", "ok")
+            g.db.commit()
+        except (ValueError, KeyError, sqlite3.Error) as e:
+            g.db.rollback()
+            flash(f"Nicht gespeichert: {e}", "fehler")
+        return redirect(url_for("substitution"))
+
+    try:
+        tage = max(7, min(365, int(request.args.get("tage", 30))))
+    except ValueError:
+        tage = 30
+    heute = datetime.date.today().isoformat()
+
+    if request.args.get("export") == "csv":
+        puffer = io.StringIO()
+        schreiber = csv.writer(puffer, delimiter=";")
+        schreiber.writerow(["Datum", "Mittel", "Verordnet (mg)", "Genommen (mg)",
+                            "Abweichung (mg)", "Vergabe", "Notiz"])
+        zeilen: dict = {}
+        for schluessel, (name, _) in SUBSTITUTE.items():
+            for t in _subst_reihe(schluessel, tage):
+                if t["ist"] is None and t["soll"] is None:
+                    continue
+                zeilen.setdefault(t["datum"], []).append((name, t))
+        for datum in sorted(zeilen):
+            for name, t in zeilen[datum]:
+                schreiber.writerow([
+                    datum_de(datum), name,
+                    str(t["soll"]).replace(".", ",") if t["soll"] is not None else "",
+                    str(t["ist"]).replace(".", ",") if t["ist"] is not None else "",
+                    str(t["differenz"]).replace(".", ",") if t["differenz"] is not None else "",
+                    t["vergabe"], t["notiz"],
+                ])
+        antwort = Response("﻿" + puffer.getvalue(),
+                           mimetype="text/csv; charset=utf-8")
+        antwort.headers["Content-Disposition"] = \
+            f"attachment; filename=substitution-{datetime.date.today()}.csv"
+        return antwort
+
+    mittel_daten = []
+    for schluessel, (name, wirkstoff) in SUBSTITUTE.items():
+        reihe = _subst_reihe(schluessel, tage)
+        eingetragen = [t for t in reihe if t["ist"] is not None]
+        mittel_daten.append({
+            "schluessel": schluessel,
+            "name": name,
+            "wirkstoff": wirkstoff,
+            "reihe": reihe,
+            "letzte_tage": list(reversed(reihe))[:14],
+            "heute": next((t for t in reihe if t["heute"]), None),
+            "soll_heute": soll_subst_fuer(g.db, schluessel, heute),
+            "anzahl": len(eingetragen),
+            "verordnungen": g.db.execute(
+                "SELECT * FROM subst_plan WHERE mittel = ? ORDER BY von DESC",
+                (schluessel,)).fetchall(),
+            "eintrag_heute": g.db.execute(
+                "SELECT * FROM subst_eintraege WHERE mittel = ? AND datum = ?",
+                (schluessel, heute)).fetchone(),
+        })
+
+    return render_template("substitution.html", mittel_daten=mittel_daten,
+                           tage=tage, heute=heute)
+
+
+# ------------------------------------------------------------------ Rückfälle
+
+def _konsum_kennzahlen() -> dict:
+    """Wie lange ist es her, und wie lange war die längste Strecke."""
+    tage = [datetime.date.fromisoformat(z["datum"]) for z in g.db.execute(
+        "SELECT DISTINCT datum FROM konsum ORDER BY datum")]
+    heute = datetime.date.today()
+    if not tage:
+        return {"anzahl": 0, "letzter": None, "seither": None, "laengste": None}
+
+    # Längste Strecke zwischen zwei Einträgen – und die aktuelle zählt mit.
+    abstaende = [(b - a).days for a, b in zip(tage, tage[1:])]
+    seither = (heute - tage[-1]).days
+    return {
+        "anzahl": g.db.execute("SELECT COUNT(*) AS n FROM konsum").fetchone()["n"],
+        "letzter": tage[-1].isoformat(),
+        "seither": seither,
+        "laengste": max(abstaende + [seither]) if (abstaende or seither) else None,
+    }
+
+
+@app.route("/konsum", methods=["GET", "POST"])
+@anmeldung_erforderlich
+def konsum():
+    if request.method == "POST":
+        try:
+            aktion = request.form.get("aktion")
+            if aktion == "neu":
+                datum = datetime.date.fromisoformat(request.form["datum"])
+                if datum > datetime.date.today():
+                    raise ValueError("Das Datum liegt in der Zukunft.")
+                substanz = request.form.get("substanz", "").strip()
+                if not substanz:
+                    raise ValueError("Bitte angeben, worum es ging.")
+                g.db.execute(
+                    """INSERT INTO konsum (datum, uhrzeit, substanz, menge,
+                                           ausloeser, davor, danach, besprochen, notiz)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    (datum.isoformat(),
+                     request.form.get("uhrzeit", "").strip(),
+                     substanz,
+                     request.form.get("menge", "").strip(),
+                     ", ".join(request.form.getlist("ausloeser")),
+                     request.form.get("davor") or None,
+                     request.form.get("danach") or None,
+                     request.form.get("besprochen", ""),
+                     request.form.get("notiz", "").strip()),
+                )
+                flash("Eingetragen. Dass du es aufschreibst, ist der schwere Teil.", "ok")
+            elif aktion == "besprochen":
+                g.db.execute("UPDATE konsum SET besprochen = 'ja' WHERE id = ?",
+                             (request.form["id"],))
+                flash("Als besprochen vermerkt.", "ok")
+            elif aktion == "loeschen":
+                g.db.execute("DELETE FROM konsum WHERE id = ?", (request.form["id"],))
+                flash("Eintrag gelöscht.", "ok")
+            g.db.commit()
+        except (ValueError, KeyError, sqlite3.Error) as e:
+            g.db.rollback()
+            flash(f"Nicht gespeichert: {e}", "fehler")
+        return redirect(url_for("konsum"))
+
+    eintraege = g.db.execute(
+        "SELECT * FROM konsum ORDER BY datum DESC, id DESC").fetchall()
+
+    if request.args.get("export") == "csv":
+        puffer = io.StringIO()
+        schreiber = csv.writer(puffer, delimiter=";")
+        schreiber.writerow(["Datum", "Uhrzeit", "Substanz", "Menge", "Auslöser",
+                            "Befinden davor", "Befinden danach", "Besprochen", "Notiz"])
+        for e in reversed(eintraege):
+            schreiber.writerow([
+                datum_de(e["datum"]), e["uhrzeit"], e["substanz"], e["menge"],
+                e["ausloeser"],
+                BEFINDEN.get(e["davor"], ("", ""))[0] if e["davor"] else "",
+                BEFINDEN.get(e["danach"], ("", ""))[0] if e["danach"] else "",
+                e["besprochen"], e["notiz"],
+            ])
+        antwort = Response("﻿" + puffer.getvalue(),
+                           mimetype="text/csv; charset=utf-8")
+        antwort.headers["Content-Disposition"] = \
+            f"attachment; filename=rueckfaelle-{datetime.date.today()}.csv"
+        return antwort
+
+    # Häufigste Auslöser – darum geht es hier eigentlich.
+    haeufigkeit: dict = {}
+    for e in eintraege:
+        for a in filter(None, (x.strip() for x in e["ausloeser"].split(","))):
+            haeufigkeit[a] = haeufigkeit.get(a, 0) + 1
+    top_ausloeser = sorted(haeufigkeit.items(), key=lambda p: p[1], reverse=True)[:8]
+
+    return render_template(
+        "konsum.html",
+        eintraege=eintraege,
+        kennzahlen=_konsum_kennzahlen(),
+        top_ausloeser=top_ausloeser,
+        heute=datetime.date.today().isoformat(),
     )
 
 

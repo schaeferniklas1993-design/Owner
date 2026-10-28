@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block titel %}Rückfälle – Mein Weg{% endblock %}
+{% block inhalt %}
+
+<div class="seitenkopf">
+  <div>
+    <h1>Rückfälle</h1>
+    <div class="karten-hinweis">Festhalten, was war – und woran es lag</div>
+  </div>
+  {% if eintraege %}
+  <a class="knopf-sekundaer" href="{{ url_for('konsum', export='csv') }}">
+    ⬇ Für den Termin (CSV)
+  </a>
+  {% endif %}
+</div>
+
+<div class="hinweis-box">
+  Hier wird nichts bewertet und nichts gezählt, um dich schlecht dastehen zu
+  lassen. Ein Rückfall ist ein Ereignis, kein Urteil – und er löscht nichts
+  von dem, was du vorher geschafft hast. Der Sinn dieser Seite ist das
+  <strong>Muster</strong>: Wann passiert es, in welcher Lage, nach welchem
+  Gefühl. Das sieht man erst, wenn mehrere Einträge nebeneinanderstehen.
+</div>
+
+<section class="kacheln">
+  <div class="kachel">
+    <div class="kachel-label">Seit dem letzten Eintrag</div>
+    <div class="kachel-wert {{ 'plus' if kennzahlen.seither and kennzahlen.seither > 0 }}">
+      {% if kennzahlen.seither is none %}–
+      {% else %}{{ kennzahlen.seither }} Tage{% endif %}
+    </div>
+    <div class="kachel-detail">
+      {% if kennzahlen.letzter %}zuletzt {{ kennzahlen.letzter|datum_de }}
+      {% else %}noch nichts eingetragen{% endif %}
+    </div>
+  </div>
+  <div class="kachel">
+    <div class="kachel-label">Längste Strecke</div>
+    <div class="kachel-wert">
+      {% if kennzahlen.laengste is none %}–{% else %}{{ kennzahlen.laengste }} Tage{% endif %}
+    </div>
+    <div class="kachel-detail">das hast du schon mal geschafft</div>
+  </div>
+  <div class="kachel">
+    <div class="kachel-label">Einträge</div>
+    <div class="kachel-wert">{{ kennzahlen.anzahl }}</div>
+    <div class="kachel-detail">insgesamt festgehalten</div>
+  </div>
+</section>
+
+{% if top_ausloeser %}
+<section class="karte">
+  <h2>Was bei dir immer wieder vorkommt</h2>
+  <p class="karten-hinweis" style="margin-bottom:0.7rem">
+    Die häufigsten Auslöser aus deinen Einträgen. Wenn hier etwas oben steht,
+    weißt du, wo sich Vorbereitung am meisten lohnt.
+  </p>
+  <div class="symptom-reihe">
+    {% for name, anzahl in top_ausloeser %}
+    <span class="symptom gewaehlt">{{ name }} · {{ anzahl }}×</span>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="karte">
+  <h2>Eintrag hinzufügen</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="neu">
+
+    <label>Datum
+      <input type="date" name="datum" value="{{ heute }}" max="{{ heute }}" required>
+    </label>
+    <label>Uhrzeit <span class="feld-hinweis">optional</span>
+      <input type="time" name="uhrzeit">
+    </label>
+    <label>Was
+      <input name="substanz" list="substanzen" value="Kokain" required>
+      <datalist id="substanzen">
+        {% for s in SUBSTANZEN %}<option value="{{ s }}">{% endfor %}
+      </datalist>
+    </label>
+    <label>Umfang <span class="feld-hinweis">optional, frei</span>
+      <input name="menge" placeholder="z. B. „ein Abend“, „wenig“, „0,5 g“">
+    </label>
+
+    <div class="breit">
+      <label style="margin-bottom:0.45rem">
+        Was war los davor?
+        <span class="feld-hinweis">(mehrere möglich – das ist der wichtigste Teil)</span>
+      </label>
+      <div class="symptom-reihe">
+        {% for a in AUSLOESER %}
+        <label class="symptom">
+          <input type="checkbox" name="ausloeser" value="{{ a }}"> {{ a }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <label>Befinden davor
+      <select name="davor">
+        <option value="">– keine Angabe –</option>
+        {% for wert, (text, symbol) in BEFINDEN.items()|list|reverse %}
+        <option value="{{ wert }}">{{ symbol }} {{ text }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Befinden danach
+      <select name="danach">
+        <option value="">– keine Angabe –</option>
+        {% for wert, (text, symbol) in BEFINDEN.items()|list|reverse %}
+        <option value="{{ wert }}">{{ symbol }} {{ text }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Im Behandlungsteam angesprochen?
+      <select name="besprochen">
+        <option value="noch nicht">noch nicht</option>
+        <option value="ja">ja</option>
+        <option value="nein">nein</option>
+      </select>
+    </label>
+
+    <label class="breit">Notiz
+      <span class="feld-hinweis">Was hat dich rausgeholt? Was hätte geholfen?</span>
+      <textarea name="notiz" placeholder="In einem halben Jahr liest du das hier und weißt wieder, wie es war."></textarea>
+    </label>
+    <button type="submit">Eintragen</button>
+  </form>
+</section>
+
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Deine Einträge</h2>
+    <span class="karten-hinweis">{{ eintraege|length }} insgesamt</span>
+  </div>
+
+  {% if eintraege %}
+  {% for e in eintraege %}
+  <div class="vorfall">
+    <div class="vorfall-kopf">
+      <span class="datum">
+        {{ e.datum|datum_de }}{% if e.uhrzeit %}, {{ e.uhrzeit }} Uhr{% endif %}
+      </span>
+      <strong>{{ e.substanz }}</strong>{% if e.menge %}<span>{{ e.menge }}</span>{% endif %}
+      {% if e.besprochen == 'ja' %}
+        <span class="marke-still">besprochen</span>
+      {% elif e.besprochen == 'noch nicht' %}
+        <span class="marke-warm">noch nicht besprochen</span>
+      {% endif %}
+      <form class="inline-formular" method="post"
+            onsubmit="return confirm('Diesen Eintrag wirklich löschen?')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="aktion" value="loeschen">
+        <input type="hidden" name="id" value="{{ e.id }}">
+        <button class="knopf-still" title="Löschen">✕</button>
+      </form>
+    </div>
+
+    {% if e.ausloeser %}
+    <div class="symptom-reihe" style="margin:0.4rem 0">
+      {% for a in e.ausloeser.split(', ') %}
+      {% if a %}<span class="symptom gewaehlt">{{ a }}</span>{% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if e.davor or e.danach %}
+    <div class="karten-hinweis">
+      {% if e.davor %}davor {{ BEFINDEN[e.davor][1] }} {{ BEFINDEN[e.davor][0] }}{% endif %}
+      {% if e.davor and e.danach %} → {% endif %}
+      {% if e.danach %}danach {{ BEFINDEN[e.danach][1] }} {{ BEFINDEN[e.danach][0] }}{% endif %}
+    </div>
+    {% endif %}
+
+    {% if e.notiz %}<div style="margin-top:0.35rem">{{ e.notiz }}</div>{% endif %}
+
+    {% if e.besprochen != 'ja' %}
+    <form class="inline-formular" method="post" style="margin-top:0.5rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="aktion" value="besprochen">
+      <input type="hidden" name="id" value="{{ e.id }}">
+      <button class="knopf-still" style="padding-left:0">✓ Im Team angesprochen</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% else %}
+  <p class="leer-hinweis">
+    Noch nichts eingetragen. Wenn es so bleibt: umso besser. Und wenn nicht,
+    ist das hier der Ort dafür – ohne dass jemand mitliest.
+  </p>
+  {% endif %}
+</section>
+
+<section class="karte">
+  <h2>Zwei Dinge, die wichtig sind</h2>
+  <ul>
+    <li>
+      <strong>Kokain neben der Substitution belastet das Herz.</strong>
+      Bei Brustschmerzen, Herzrasen, das nicht aufhört, starker Atemnot oder
+      Krampfanfall: <a href="tel:112"><strong>112</strong></a>, ohne zu zögern.
+      Sag dort auch, was du genommen hast – das ändert die Behandlung und
+      bringt dich nicht in Schwierigkeiten.
+    </li>
+    <li>
+      <strong>Ansprechen ist fast immer besser als Verschweigen.</strong>
+      Ein Rückfall, über den geredet wird, ist etwas, woran man arbeiten kann.
+      Was die Substitution eher gefährdet, ist das Verbergen – nicht der
+      Rückfall selbst. Deine Einträge hier geben dir die Worte dafür.
+    </li>
+  </ul>
+  <p class="karten-hinweis" style="margin-bottom:0">
+    Du entscheidest, was du zeigst: Der CSV-Export oben enthält nur die
+    Einträge dieser Seite.
+  </p>
+</section>
+
+{% endblock %}
+{% block skripte %}
+<script src="{{ url_for('static', filename='auswahl.js') }}"></script>
+{% endblock %}

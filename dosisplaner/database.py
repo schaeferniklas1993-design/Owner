@@ -28,6 +28,31 @@ SYMPTOME = [
     "Übelkeit", "Kopfschmerzen", "Schmerzen", "Benommenheit", "Niedergeschlagenheit",
 ]
 
+# Substitutionsmittel. Dosis und Vergabe legt die Substitutionsärztin bzw.
+# der Substitutionsarzt fest – hier wird nur festgehalten, was verordnet
+# wurde und was tatsächlich war.
+SUBSTITUTE = {
+    "polamidon": ("Polamidon", "Levomethadon"),
+    "substitol": ("Substitol", "Morphinsulfat retard"),
+}
+
+# Wie die Dosis an dem Tag kam.
+VERGABE = ["Sichtvergabe", "Take-home", "Ausgelassen"]
+
+# Was bei einem Rückfall eingetragen werden kann.
+SUBSTANZEN = [
+    "Kokain", "Crack", "Alkohol", "Benzodiazepine", "Cannabis",
+    "Amphetamin", "Heroin", "Anderes",
+]
+
+# Auslöser – der eigentlich wertvolle Teil. Muster erkennt man erst,
+# wenn mehrere Einträge beieinanderstehen.
+AUSLOESER = [
+    "Stress", "Streit", "Einsamkeit", "Langeweile", "Geld da",
+    "Alte Kontakte", "Feiern", "Schlaflos", "Craving ohne Anlass",
+    "Schmerzen", "Frust", "Gute Laune",
+]
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS benutzer (
     id            INTEGER PRIMARY KEY,
@@ -61,6 +86,50 @@ CREATE TABLE IF NOT EXISTS eintraege (
     erstellt_am TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_eintraege_datum ON eintraege(datum);
+
+-- Substitution: was verordnet ist (Polamidon, Substitol).
+-- Festgelegt wird das in der Praxis – hier steht nur, was dort vereinbart
+-- wurde, damit du es nachlesen und daneben halten kannst.
+CREATE TABLE IF NOT EXISTS subst_plan (
+    id          INTEGER PRIMARY KEY,
+    mittel      TEXT NOT NULL,            -- Schlüssel aus SUBSTITUTE
+    von         TEXT NOT NULL,
+    bis         TEXT NOT NULL,            -- einschließlich
+    soll_mg     REAL NOT NULL,
+    notiz       TEXT NOT NULL DEFAULT '',
+    erstellt_am TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_subst_plan ON subst_plan(mittel, von);
+
+-- Substitution: was an dem Tag tatsächlich war.
+CREATE TABLE IF NOT EXISTS subst_eintraege (
+    id          INTEGER PRIMARY KEY,
+    datum       TEXT NOT NULL,
+    mittel      TEXT NOT NULL,
+    ist_mg      REAL NOT NULL,
+    vergabe     TEXT NOT NULL DEFAULT '', -- Sichtvergabe / Take-home / Ausgelassen
+    notiz       TEXT NOT NULL DEFAULT '',
+    erstellt_am TEXT NOT NULL DEFAULT (datetime('now', 'localtime')),
+    UNIQUE (datum, mittel)
+);
+CREATE INDEX IF NOT EXISTS idx_subst_eintraege ON subst_eintraege(mittel, datum);
+
+-- Rückfälle: offen festhalten, was war – ohne Bewertung.
+-- Der Sinn ist nicht die Zahl, sondern das Muster dahinter.
+CREATE TABLE IF NOT EXISTS konsum (
+    id          INTEGER PRIMARY KEY,
+    datum       TEXT NOT NULL,
+    uhrzeit     TEXT NOT NULL DEFAULT '',
+    substanz    TEXT NOT NULL,
+    menge       TEXT NOT NULL DEFAULT '', -- frei, oft nicht bezifferbar
+    ausloeser   TEXT NOT NULL DEFAULT '', -- kommagetrennt, siehe AUSLOESER
+    davor       INTEGER,                  -- Befinden 1–5 vorher
+    danach      INTEGER,                  -- Befinden 1–5 danach
+    besprochen  TEXT NOT NULL DEFAULT '', -- ja / noch nicht / nein
+    notiz       TEXT NOT NULL DEFAULT '',
+    erstellt_am TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_konsum_datum ON konsum(datum);
 
 -- Eigene Erfolge und Erinnerungen, die guttun.
 CREATE TABLE IF NOT EXISTS erfolge (
@@ -115,6 +184,16 @@ def soll_fuer(conn: sqlite3.Connection, datum: str) -> float | None:
         "SELECT soll_mg FROM plan_phasen WHERE ? BETWEEN von AND bis"
         " ORDER BY von DESC LIMIT 1",
         (datum,),
+    ).fetchone()
+    return zeile["soll_mg"] if zeile else None
+
+
+def soll_subst_fuer(conn: sqlite3.Connection, mittel: str, datum: str) -> float | None:
+    """Verordnete Dosis eines Substitutionsmittels an einem Tag."""
+    zeile = conn.execute(
+        "SELECT soll_mg FROM subst_plan WHERE mittel = ? AND ? BETWEEN von AND bis"
+        " ORDER BY von DESC LIMIT 1",
+        (mittel, datum),
     ).fetchone()
     return zeile["soll_mg"] if zeile else None
 

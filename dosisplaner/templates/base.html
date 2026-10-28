@@ -22,6 +22,8 @@
       <a href="{{ url_for('start') }}" class="{{ 'aktiv' if request.endpoint == 'start' }}">Heute</a>
       <a href="{{ url_for('verlauf') }}" class="{{ 'aktiv' if request.endpoint == 'verlauf' }}">Verlauf</a>
       <a href="{{ url_for('plan') }}" class="{{ 'aktiv' if request.endpoint == 'plan' }}">Mein Plan</a>
+      <a href="{{ url_for('substitution') }}" class="{{ 'aktiv' if request.endpoint == 'substitution' }}">Substitution</a>
+      <a href="{{ url_for('konsum') }}" class="{{ 'aktiv' if request.endpoint == 'konsum' }}">Rückfälle</a>
       <a href="{{ url_for('erfolge') }}" class="{{ 'aktiv' if request.endpoint == 'erfolge' }}">Erfolge</a>
       <a href="{{ url_for('hilfe') }}" class="{{ 'aktiv' if request.endpoint == 'hilfe' }}">Hilfe</a>
     </nav>

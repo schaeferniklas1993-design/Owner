@@ -1,0 +1,209 @@
+{% extends "base.html" %}
+{% block titel %}Substitution – Mein Weg{% endblock %}
+{% block inhalt %}
+
+<div class="seitenkopf">
+  <div>
+    <h1>Substitution</h1>
+    <div class="karten-hinweis">Polamidon und Substitol – verordnet und tatsächlich</div>
+  </div>
+  <a class="knopf-sekundaer" href="{{ url_for('substitution', tage=tage, export='csv') }}">
+    ⬇ Für den Termin (CSV)
+  </a>
+</div>
+
+<div class="hinweis-box">
+  <strong>Wichtig:</strong> Dosis und Vergabeform legt deine Substitutionsärztin
+  bzw. dein Substitutionsarzt fest. Diese Seite rechnet nichts aus und schlägt
+  nichts vor – sie hält nur fest, was verordnet ist und wie es tatsächlich
+  gelaufen ist. Ändere nie eigenmächtig etwas an der Dosis.
+</div>
+
+{% for m in mittel_daten %}
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>{{ m.name }}</h2>
+    <span class="karten-hinweis">{{ m.wirkstoff }}</span>
+  </div>
+
+  <section class="kacheln" style="margin:0.4rem 0 1rem">
+    <div class="kachel">
+      <div class="kachel-label">Verordnet heute</div>
+      <div class="kachel-wert wert-soll">{{ m.soll_heute|mg }}</div>
+      <div class="kachel-detail">laut Verordnung</div>
+    </div>
+    <div class="kachel">
+      <div class="kachel-label">Genommen heute</div>
+      <div class="kachel-wert wert-ist">
+        {{ m.eintrag_heute.ist_mg|mg if m.eintrag_heute else "noch offen" }}
+      </div>
+      <div class="kachel-detail">
+        {% if m.eintrag_heute and m.soll_heute is not none %}
+          {% set d = m.eintrag_heute.ist_mg - m.soll_heute %}
+          {% if d == 0 %}wie verordnet ✓
+          {% elif d > 0 %}<span class="minus">{{ d|mg }} darüber</span>
+          {% else %}<span class="minus">{{ (-d)|mg }} darunter</span>{% endif %}
+        {% else %}was du heute bekommen hast{% endif %}
+      </div>
+    </div>
+    <div class="kachel">
+      <div class="kachel-label">Vergabe heute</div>
+      <div class="kachel-wert" style="font-size:1.1rem">
+        {{ m.eintrag_heute.vergabe or "–" if m.eintrag_heute else "–" }}
+      </div>
+      <div class="kachel-detail">Sichtvergabe oder Take-home</div>
+    </div>
+    <div class="kachel">
+      <div class="kachel-label">Eingetragen</div>
+      <div class="kachel-wert">{{ m.anzahl }}</div>
+      <div class="kachel-detail">der letzten {{ tage }} Tage</div>
+    </div>
+  </section>
+
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="eintrag">
+    <input type="hidden" name="mittel" value="{{ m.schluessel }}">
+    <label>Datum
+      <input type="date" name="datum" value="{{ heute }}" max="{{ heute }}" required>
+    </label>
+    <label>Tatsächlich bekommen (mg)
+      <input name="ist_mg" inputmode="decimal" required
+             value="{{ m.eintrag_heute.ist_mg if m.eintrag_heute else (m.soll_heute if m.soll_heute is not none else '') }}"
+             placeholder="z. B. 8">
+    </label>
+    <label>Vergabe
+      <select name="vergabe">
+        <option value="">– keine Angabe –</option>
+        {% for v in VERGABE %}
+        <option value="{{ v }}"
+          {{ 'selected' if m.eintrag_heute and m.eintrag_heute.vergabe == v }}>{{ v }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="breit">Notiz <span class="feld-hinweis">optional</span>
+      <input name="notiz" value="{{ m.eintrag_heute.notiz if m.eintrag_heute else '' }}"
+             placeholder="z. B. Praxis zu, Vertretung – oder wie es dir damit ging">
+    </label>
+    <button type="submit">
+      {% if m.eintrag_heute %}Eintrag aktualisieren{% else %}Eintragen{% endif %}
+    </button>
+  </form>
+
+  <details style="margin-top:1.1rem">
+    <summary class="tabelle-aufklappen">
+      <strong>Verordnung</strong>
+      <span class="karten-hinweis">
+        – {{ m.verordnungen|length }}
+        {{ 'Zeitraum' if m.verordnungen|length == 1 else 'Zeiträume' }} hinterlegt,
+        zum Aufklappen tippen
+      </span>
+    </summary>
+
+    {% if m.verordnungen %}
+    <table class="tabelle" style="margin-top:0.8rem">
+      <thead>
+        <tr><th>Von</th><th>Bis</th><th class="rechts">Tagesdosis</th><th>Notiz</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for v in m.verordnungen %}
+        <tr>
+          <td data-titel="Von">{{ v.von|datum_de }}</td>
+          <td data-titel="Bis">{{ v.bis|datum_de }}</td>
+          <td class="rechts wert-soll" data-titel="Dosis"><strong>{{ v.soll_mg|mg }}</strong></td>
+          <td data-titel="Notiz">{{ v.notiz or '–' }}</td>
+          <td class="rechts">
+            <form class="inline-formular" method="post"
+                  onsubmit="return confirm('Diesen Zeitraum wirklich löschen?')">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="aktion" value="verordnung_loeschen">
+              <input type="hidden" name="mittel" value="{{ m.schluessel }}">
+              <input type="hidden" name="id" value="{{ v.id }}">
+              <button class="knopf-still" title="Löschen">✕</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="leer-hinweis">
+      Noch keine Verordnung hinterlegt. Trag unten ein, was in der Praxis
+      vereinbart ist – dann läuft sie hier neben dem tatsächlichen Wert.
+    </p>
+    {% endif %}
+
+    <form class="formular" method="post" style="margin-top:0.8rem">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="aktion" value="verordnung">
+      <input type="hidden" name="mittel" value="{{ m.schluessel }}">
+      <label>Von
+        <input type="date" name="von" value="{{ heute }}" required>
+      </label>
+      <label>Bis <span class="feld-hinweis">einschließlich</span>
+        <input type="date" name="bis" required>
+      </label>
+      <label>Tagesdosis (mg)
+        <input name="soll_mg" inputmode="decimal" required placeholder="z. B. 8">
+      </label>
+      <label class="breit">Notiz <span class="feld-hinweis">optional</span>
+        <input name="notiz" placeholder="z. B. seit Termin am 12.10., Take-home freitags">
+      </label>
+      <button type="submit">Verordnung speichern</button>
+    </form>
+  </details>
+
+  <details style="margin-top:0.9rem">
+    <summary class="tabelle-aufklappen">
+      <strong>Die letzten 14 Tage</strong>
+      <span class="karten-hinweis"> – zum Aufklappen tippen</span>
+    </summary>
+    {% if m.letzte_tage|selectattr('ist')|list %}
+    <table class="tabelle" style="margin-top:0.8rem">
+      <thead>
+        <tr><th>Tag</th><th class="rechts">Verordnet</th><th class="rechts">Genommen</th>
+            <th class="rechts">Abweichung</th><th>Vergabe</th><th>Notiz</th></tr>
+      </thead>
+      <tbody>
+        {% for t in m.letzte_tage %}
+        {% if t.ist is not none or t.soll is not none %}
+        <tr class="{{ 'zeile-heute' if t.heute }}">
+          <td data-titel="Tag">{{ t.kurz }}{% if t.heute %} <span class="marke-still">heute</span>{% endif %}</td>
+          <td class="rechts wert-soll" data-titel="Verordnet">{{ t.soll|mg }}</td>
+          <td class="rechts wert-ist" data-titel="Genommen">{{ t.ist|mg }}</td>
+          <td class="rechts" data-titel="Abweichung">
+            {% if t.differenz is none %}–
+            {% elif t.differenz == 0 %}<span class="plus">✓</span>
+            {% elif t.differenz > 0 %}<span class="minus">+{{ t.differenz|mg }}</span>
+            {% else %}<span class="minus">−{{ (-t.differenz)|mg }}</span>{% endif %}
+          </td>
+          <td data-titel="Vergabe">{{ t.vergabe or '' }}</td>
+          <td data-titel="Notiz">{{ t.notiz }}</td>
+        </tr>
+        {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="leer-hinweis">Für {{ m.name }} ist noch nichts eingetragen.</p>
+    {% endif %}
+  </details>
+</section>
+{% endfor %}
+
+<section class="karte">
+  <h2>Warum das Mitschreiben hilft</h2>
+  <p>
+    In der Substitution zählt Verlässlichkeit – und die kann man zeigen.
+    Wenn beim nächsten Termin die Frage nach Take-home, nach einer
+    Dosisanpassung oder nach dem Verlauf kommt, hast du keine Erinnerung,
+    sondern eine Liste. Das ist ein Unterschied.
+  </p>
+  <p class="karten-hinweis" style="margin-bottom:0">
+    Trag auch Tage ein, an denen etwas nicht geklappt hat – eine ausgelassene
+    Vergabe, eine Praxis, die zu war, ein Tag, an dem es nicht gereicht hat.
+    Genau solche Tage sind die, über die sich zu sprechen lohnt.
+  </p>
+</section>
+
+{% endblock %}

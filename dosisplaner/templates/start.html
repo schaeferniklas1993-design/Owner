@@ -127,6 +127,14 @@
   </form>
 </section>
 
+{% if subst_offen %}
+<div class="hinweis-box">
+  Für heute fehlt noch der Eintrag bei
+  <strong>{{ subst_offen|join(' und ') }}</strong> –
+  <a href="{{ url_for('substitution') }}">jetzt nachtragen</a>.
+</div>
+{% endif %}
+
 <section class="karte">
   <div class="karten-kopf">
     <h2>Die letzten 14 Tage</h2>
