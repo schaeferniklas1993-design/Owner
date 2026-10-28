@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block titel %}Verlauf – Mein Weg{% endblock %}
+{% block inhalt %}
+
+<div class="seitenkopf">
+  <div>
+    <h1>Dein Verlauf</h1>
+    <div class="karten-hinweis">{{ anzahl }} Einträge in den letzten {{ tage }} Tagen</div>
+  </div>
+  <div style="display:flex; gap:0.5rem; flex-wrap:wrap">
+    {% for t in [30, 60, 90, 180] %}
+    <a class="knopf-sekundaer {{ 'aktiv' if tage == t }}"
+       href="{{ url_for('verlauf', tage=t) }}"
+       style="{{ 'border-color: var(--akzent); background: var(--akzent-hell);' if tage == t }}">{{ t }} Tage</a>
+    {% endfor %}
+  </div>
+</div>
+
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Soll und Ist nebeneinander</h2>
+    <a class="knopf-sekundaer" href="{{ url_for('verlauf', tage=tage, export='csv') }}">
+      ⬇ Für den Arzttermin (CSV)
+    </a>
+  </div>
+  <div id="diagramm-bereich"></div>
+  <div class="legende">
+    <span class="legende-eintrag">
+      <span class="legende-punkt" style="background: var(--soll)"></span> Soll (dein Plan)
+    </span>
+    <span class="legende-eintrag">
+      <span class="legende-punkt" style="background: var(--ist)"></span> Ist (tatsächlich)
+    </span>
+  </div>
+</section>
+
+{% if top_symptome or befinden_schnitt %}
+<section class="kacheln">
+  {% if befinden_schnitt %}
+  <div class="kachel">
+    <div class="kachel-label">Befinden im Schnitt</div>
+    <div class="kachel-wert">
+      {{ BEFINDEN[befinden_schnitt|round|int][1] }} {{ befinden_schnitt }}
+    </div>
+    <div class="kachel-detail">von 5 möglichen</div>
+  </div>
+  {% endif %}
+  {% if kennzahlen.reduziert_mg is not none and kennzahlen.reduziert_mg > 0 %}
+  <div class="kachel">
+    <div class="kachel-label">Reduziert seit Start</div>
+    <div class="kachel-wert plus">−{{ kennzahlen.reduziert_mg|mg }}</div>
+    <div class="kachel-detail">von {{ kennzahlen.start_mg|mg }} auf {{ kennzahlen.aktuell_mg|mg }}</div>
+  </div>
+  {% endif %}
+</section>
+{% endif %}
+
+{% if top_symptome %}
+<section class="karte">
+  <h2>Was dich in diesem Zeitraum begleitet hat</h2>
+  <p class="karten-hinweis" style="margin-bottom:0.7rem">
+    Nimm das mit zum Termin – solche Muster sind für die Behandlung wertvoll.
+  </p>
+  <div class="symptom-reihe">
+    {% for name, anzahl_tage in top_symptome %}
+    <span class="symptom gewaehlt">{{ name }} · {{ anzahl_tage }}×</span>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="karte">
+  <details>
+    <summary class="tabelle-aufklappen">
+      <h2 style="display:inline; margin:0">Alle Tage im Detail</h2>
+      <span class="karten-hinweis"> – zum Aufklappen tippen ({{ tabelle|length }} Tage)</span>
+    </summary>
+  {% if tabelle %}
+  <table class="tabelle" style="margin-top:0.9rem">
+    <thead>
+      <tr><th>Datum</th><th class="rechts">Soll</th><th class="rechts">Ist</th>
+          <th class="rechts">Abweichung</th><th>Befinden</th><th>Notiz</th></tr>
+    </thead>
+    <tbody>
+      {% for t in tabelle %}
+      <tr class="{{ 'zeile-heute' if t.heute }}">
+        <td data-titel="Datum">{{ t.datum|datum_de }}{% if t.heute %} <span class="marke-still">heute</span>{% endif %}</td>
+        <td class="rechts wert-soll" data-titel="Soll">{{ t.soll|mg }}</td>
+        <td class="rechts wert-ist" data-titel="Ist">{{ t.ist|mg }}</td>
+        <td class="rechts" data-titel="Abweichung">
+          {% if t.differenz is none %}–
+          {% elif t.differenz == 0 %}<span class="plus">genau ✓</span>
+          {% elif t.differenz > 0 %}<span class="minus">+{{ t.differenz|mg }}</span>
+          {% else %}<span class="plus">−{{ (-t.differenz)|mg }}</span>{% endif %}
+        </td>
+        <td data-titel="Befinden">
+          {% if t.befinden %}{{ BEFINDEN[t.befinden][1] }} {{ BEFINDEN[t.befinden][0] }}{% endif %}
+        </td>
+        <td data-titel="Notiz">
+          {{ t.notiz }}
+          {% if t.symptome %}<div class="karten-hinweis">{{ t.symptome }}</div>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">In diesem Zeitraum gibt es noch keine Einträge.</p>
+  {% endif %}
+  </details>
+</section>
+
+{% endblock %}
+{% block skripte %}
+<script>window.VERLAUF = {{ reihe|tojson }};</script>
+<script src="{{ url_for('static', filename='diagramm.js') }}"></script>
+{% endblock %}

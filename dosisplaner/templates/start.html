@@ -1,0 +1,183 @@
+{% extends "base.html" %}
+{% block titel %}Heute – Mein Weg{% endblock %}
+{% block inhalt %}
+
+<div class="willkommen">
+  <h1>Hallo {{ g.benutzer.anzeigename }} 🌱</h1>
+  <p class="ermutigung">{{ ermutigung }}</p>
+</div>
+
+{% if not hat_plan %}
+<div class="hinweis-box">
+  <strong>Erster Schritt:</strong> Trag unter
+  <a href="{{ url_for('plan') }}">Mein Plan</a> deinen Reduktionsplan ein –
+  am besten den, den du mit deiner Ärztin oder deinem Arzt abgestimmt hast.
+  Danach läuft Soll und Ist hier automatisch nebeneinander.
+</div>
+{% endif %}
+
+<section class="kacheln">
+  <div class="kachel">
+    <div class="kachel-label">Soll heute</div>
+    <div class="kachel-wert wert-soll">{{ soll_heute|mg }}</div>
+    <div class="kachel-detail">laut deinem Plan</div>
+  </div>
+  <div class="kachel">
+    <div class="kachel-label">Ist heute</div>
+    <div class="kachel-wert wert-ist">
+      {{ heute_eintrag.ist_mg|mg if heute_eintrag else "noch offen" }}
+    </div>
+    <div class="kachel-detail">
+      {% if heute_eintrag and soll_heute is not none %}
+        {% set d = heute_eintrag.ist_mg - soll_heute %}
+        {% if d == 0 %}genau nach Plan ✓
+        {% elif d > 0 %}<span class="minus">{{ d|mg }} über Plan</span>
+        {% else %}<span class="plus">{{ (-d)|mg }} unter Plan</span>{% endif %}
+      {% else %}was du heute genommen hast{% endif %}
+    </div>
+  </div>
+  {% if kennzahlen.reduziert_mg is not none and kennzahlen.reduziert_mg > 0 %}
+  <div class="kachel">
+    <div class="kachel-label">Schon geschafft</div>
+    <div class="kachel-wert plus">−{{ kennzahlen.reduziert_mg|mg }}</div>
+    <div class="kachel-detail">seit {{ kennzahlen.start_datum|datum_de }}</div>
+  </div>
+  {% endif %}
+  <div class="kachel">
+    <div class="kachel-label">Dabeigeblieben</div>
+    <div class="kachel-wert">{{ kennzahlen.tage_dabei }} Tage</div>
+    <div class="kachel-detail">
+      {% if serie > 1 %}🔥 {{ serie }} Tage am Stück{% else %}eingetragen{% endif %}
+    </div>
+  </div>
+</section>
+
+{% if kennzahlen.fortschritt is not none %}
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Dein Weg von {{ kennzahlen.start_mg|mg }} auf {{ kennzahlen.ziel_mg|mg }}</h2>
+    <span class="karten-hinweis">{{ kennzahlen.fortschritt }} % des Weges</span>
+  </div>
+  <div class="fortschritt-balken">
+    <div class="fortschritt-fuellung" style="width: {{ kennzahlen.fortschritt }}%"></div>
+  </div>
+  <div class="fortschritt-text">
+    Aktuell bei <strong>{{ kennzahlen.aktuell_mg|mg }}</strong>.
+    {% if kennzahlen.fortschritt >= 100 %}
+      Du hast dein Ziel erreicht. Das ist eine großartige Leistung. 🎉
+    {% elif kennzahlen.fortschritt >= 75 %}
+      Der größte Teil liegt hinter dir. 💪
+    {% elif kennzahlen.fortschritt >= 50 %}
+      Über die Hälfte geschafft.
+    {% elif kennzahlen.fortschritt >= 25 %}
+      Ein gutes Stück ist schon getan.
+    {% else %}
+      Der Anfang ist gemacht – und der ist oft der schwerste Teil.
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+<section class="karte">
+  <h2>{% if heute_eintrag %}Heutigen Eintrag ändern{% else %}Wie war heute?{% endif %}</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Datum
+      <input type="date" name="datum" value="{{ heute }}" required>
+    </label>
+    <label>Tatsächlich genommen (mg)
+      <input name="ist_mg" inputmode="decimal" required
+             value="{{ heute_eintrag.ist_mg if heute_eintrag else (soll_heute if soll_heute is not none else '') }}"
+             placeholder="z. B. 450">
+    </label>
+
+    <div class="breit">
+      <label style="margin-bottom:0.45rem">Wie ging es dir heute?</label>
+      <div class="befinden-reihe">
+        {% for wert, (text, symbol) in BEFINDEN.items()|list|reverse %}
+        <label class="befinden-knopf {{ 'gewaehlt' if heute_eintrag and heute_eintrag.befinden == wert }}">
+          <input type="radio" name="befinden" value="{{ wert }}"
+                 {{ 'checked' if heute_eintrag and heute_eintrag.befinden == wert }}>
+          <span class="befinden-symbol">{{ symbol }}</span>
+          <span class="befinden-text">{{ text }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="breit">
+      <label style="margin-bottom:0.45rem">
+        Spürbar heute? <span class="feld-hinweis">(hilft beim Arztgespräch)</span>
+      </label>
+      <div class="symptom-reihe">
+        {% set gewaehlte = (heute_eintrag.symptome if heute_eintrag else '').split(', ') %}
+        {% for s in SYMPTOME %}
+        <label class="symptom {{ 'gewaehlt' if s in gewaehlte }}">
+          <input type="checkbox" name="symptome" value="{{ s }}"
+                 {{ 'checked' if s in gewaehlte }}> {{ s }}
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <label class="breit">Notiz <span class="feld-hinweis">optional</span>
+      <textarea name="notiz" placeholder="Was war heute los? Was hat geholfen?">{{ heute_eintrag.notiz if heute_eintrag else '' }}</textarea>
+    </label>
+    <button type="submit">{% if heute_eintrag %}Eintrag aktualisieren{% else %}Eintragen{% endif %}</button>
+  </form>
+</section>
+
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Die letzten 14 Tage</h2>
+    <a class="knopf-sekundaer" href="{{ url_for('verlauf') }}">Ganzer Verlauf</a>
+  </div>
+  {% if letzte_tage|selectattr('ist')|list %}
+  <table class="tabelle">
+    <thead>
+      <tr><th>Tag</th><th class="rechts">Soll</th><th class="rechts">Ist</th>
+          <th class="rechts">Abweichung</th><th>Befinden</th></tr>
+    </thead>
+    <tbody>
+      {% for t in letzte_tage %}
+      {% if t.ist is not none or t.soll is not none %}
+      <tr class="{{ 'zeile-heute' if t.heute }}">
+        <td data-titel="Tag">{{ t.kurz }}{% if t.heute %} <span class="marke-still">heute</span>{% endif %}</td>
+        <td class="rechts wert-soll" data-titel="Soll">{{ t.soll|mg }}</td>
+        <td class="rechts wert-ist" data-titel="Ist">{{ t.ist|mg }}</td>
+        <td class="rechts" data-titel="Abweichung">
+          {% if t.differenz is none %}–
+          {% elif t.differenz == 0 %}<span class="plus">✓</span>
+          {% elif t.differenz > 0 %}<span class="minus">+{{ t.differenz|mg }}</span>
+          {% else %}<span class="plus">−{{ (-t.differenz)|mg }}</span>{% endif %}
+        </td>
+        <td data-titel="Befinden">{{ BEFINDEN[t.befinden][1] if t.befinden else '' }}</td>
+      </tr>
+      {% endif %}
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">Noch keine Einträge – dein erster kommt oben hin.</p>
+  {% endif %}
+</section>
+
+{% if erfolge %}
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Woran du dich erinnern wolltest</h2>
+    <a class="knopf-sekundaer" href="{{ url_for('erfolge') }}">Alle</a>
+  </div>
+  {% for e in erfolge %}
+  <div class="erfolg">
+    <div class="erfolg-datum">{{ e.datum|datum_de }}</div>
+    {{ e.text }}
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% endblock %}
+{% block skripte %}
+<script src="{{ url_for('static', filename='auswahl.js') }}"></script>
+{% endblock %}

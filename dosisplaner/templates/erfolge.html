@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block titel %}Erfolge – Mein Weg{% endblock %}
+{% block inhalt %}
+
+<div class="seitenkopf"><h1>Deine Erfolge</h1></div>
+
+<p class="seiten-hinweis">
+  An schweren Tagen vergisst man leicht, wie weit man schon gekommen ist.
+  Halt hier fest, was gut lief – egal wie klein es dir vorkommt.
+  Genau dafür ist diese Seite da.
+</p>
+
+<section class="karte">
+  <h2>Etwas festhalten</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="neu">
+    <label>Datum
+      <input type="date" name="datum" value="{{ heute }}" required>
+    </label>
+    <label class="breit">Was war gut?
+      <input name="text" required
+             placeholder="z. B. Erste Woche ohne Extra-Dosis geschafft">
+    </label>
+    <button type="submit">Festhalten</button>
+  </form>
+</section>
+
+<section class="karte">
+  <h2>Gesammelt</h2>
+  {% if eintraege %}
+    {% for e in eintraege %}
+    <div class="erfolg">
+      <div class="erfolg-datum">
+        {{ e.datum|datum_de }}
+        <form class="inline-formular" method="post" style="float:right"
+              onsubmit="return confirm('Eintrag löschen?')">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="aktion" value="loeschen">
+          <input type="hidden" name="id" value="{{ e.id }}">
+          <button class="knopf-still" title="Löschen">✕</button>
+        </form>
+      </div>
+      {{ e.text }}
+    </div>
+    {% endfor %}
+  {% else %}
+  <p class="leer-hinweis">
+    Noch nichts gesammelt. Der erste Eintrag darf ruhig sein:
+    „Ich habe angefangen, das hier zu führen.“ Das zählt nämlich.
+  </p>
+  {% endif %}
+</section>
+
+{% endblock %}

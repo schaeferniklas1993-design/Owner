@@ -1,0 +1,21 @@
+[Unit]
+Description=Mein Weg – Dosisplaner (Gunicorn)
+After=network.target
+
+[Service]
+User=dosis
+Group=dosis
+WorkingDirectory=/opt/dosisplaner
+Environment="PATH=/opt/dosisplaner/.venv/bin"
+ExecStart=/opt/dosisplaner/.venv/bin/gunicorn --workers 2 --bind 127.0.0.1:8003 app:app
+Restart=always
+RestartSec=5
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/dosisplaner
+
+[Install]
+WantedBy=multi-user.target

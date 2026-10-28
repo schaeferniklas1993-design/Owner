@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block titel %}Hilfe – Mein Weg{% endblock %}
+{% block inhalt %}
+
+<div class="seitenkopf"><h1>Wenn du Unterstützung brauchst</h1></div>
+
+<p class="seiten-hinweis">
+  Diese Seite hilft dir beim Überblick – sie ersetzt aber keine Begleitung
+  durch Menschen. Hier stehen Stellen, bei denen du anrufen kannst.
+  Es ist keine Schwäche, das zu tun.
+</p>
+
+<section class="karte">
+  <h2>Sofort erreichbar, rund um die Uhr</h2>
+  <table class="tabelle">
+    <tbody>
+      <tr>
+        <td data-titel="Stelle"><strong>Telefonseelsorge</strong><br>
+          <span class="karten-hinweis">kostenlos, anonym, Tag und Nacht</span></td>
+        <td class="rechts" data-titel="Nummer">
+          <a href="tel:08001110111">0800 111 0 111</a><br>
+          <a href="tel:08001110222">0800 111 0 222</a>
+        </td>
+      </tr>
+      <tr>
+        <td data-titel="Stelle"><strong>Sucht &amp; Drogen Hotline</strong><br>
+          <span class="karten-hinweis">bundesweit, rund um die Uhr</span></td>
+        <td class="rechts" data-titel="Nummer"><a href="tel:018063130310">01806 313 031</a></td>
+      </tr>
+      <tr>
+        <td data-titel="Stelle"><strong>Ärztlicher Bereitschaftsdienst</strong><br>
+          <span class="karten-hinweis">wenn es dir körperlich schlecht geht</span></td>
+        <td class="rechts" data-titel="Nummer"><a href="tel:116117">116 117</a></td>
+      </tr>
+      <tr>
+        <td data-titel="Stelle"><strong>Notruf</strong><br>
+          <span class="karten-hinweis">bei akuter Gefahr, Krampfanfall, Notfall</span></td>
+        <td class="rechts" data-titel="Nummer"><a href="tel:112"><strong>112</strong></a></td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="karte">
+  <h2>Beratung in deiner Nähe</h2>
+  <p>
+    Suchtberatungsstellen beraten kostenlos und auf Wunsch anonym – auch bei
+    Medikamenten, die ärztlich verordnet wurden.
+  </p>
+  <ul>
+    <li><a href="https://www.dhs.de/beratung" target="_blank" rel="noopener">
+      Suchthilfeverzeichnis der DHS</a> – Beratungsstellen nach Postleitzahl</li>
+    <li><a href="https://www.bzga.de" target="_blank" rel="noopener">
+      Bundeszentrale für gesundheitliche Aufklärung</a></li>
+  </ul>
+</section>
+
+<section class="karte">
+  <h2>Worauf du beim Reduzieren achten solltest</h2>
+  <p>
+    Pregabalin gehört zu den Wirkstoffen, bei denen zu schnelles Reduzieren
+    oder abruptes Absetzen ernste Beschwerden auslösen kann. Deshalb gilt:
+  </p>
+  <ul>
+    <li>Den Reduktionsplan <strong>mit einer Ärztin oder einem Arzt abstimmen</strong>
+        – diese Seite hält ihn nur fest.</li>
+    <li>Bei Krampfanfällen, starker Verwirrtheit oder Gedanken, dir etwas
+        anzutun: <strong>sofort 112</strong> oder in die Notaufnahme.</li>
+    <li>Wenn ein Schritt zu schwer ist, ist das kein Scheitern – es ist eine
+        Information für das nächste Gespräch. Genau dafür ist dein Verlauf da.</li>
+  </ul>
+  <p class="karten-hinweis">
+    Nimm deinen Verlauf zum Termin mit. Unter „Verlauf“ kannst du ihn als
+    Datei herunterladen.
+  </p>
+</section>
+
+{% if not g.benutzer %}
+<p style="text-align:center"><a class="knopf-sekundaer" href="{{ url_for('login') }}">Zur Anmeldung</a></p>
+{% endif %}
+
+{% endblock %}

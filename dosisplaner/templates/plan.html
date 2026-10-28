@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block titel %}Mein Plan – Mein Weg{% endblock %}
+{% block inhalt %}
+
+<div class="seitenkopf"><h1>Mein Reduktionsplan</h1></div>
+
+<div class="hinweis-box">
+  <strong>Wichtig:</strong> Die Werte hier trägst du selbst ein – am besten so,
+  wie du sie mit deiner Ärztin oder deinem Arzt besprochen hast. Diese Seite
+  rechnet nichts aus und schlägt nichts vor; sie hält nur fest, was ihr
+  vereinbart habt, und zeigt dir, wie du dazu stehst.
+</div>
+
+{% if hinweise %}
+<div class="hinweis-box">
+  <strong>Zu prüfen:</strong>
+  <ul style="margin:0.4rem 0 0; padding-left:1.1rem">
+    {% for h in hinweise %}<li>{{ h }}</li>{% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<section class="karte">
+  <div class="karten-kopf">
+    <h2>Deine Abschnitte</h2>
+    {% if soll_heute is not none %}
+    <span class="karten-hinweis">Heute gilt: <strong>{{ soll_heute|mg }}</strong></span>
+    {% endif %}
+  </div>
+  {% if phasen %}
+  <table class="tabelle">
+    <thead>
+      <tr><th>Von</th><th>Bis</th><th class="rechts">Tagesdosis</th><th>Notiz</th><th></th></tr>
+    </thead>
+    <tbody>
+      {% for p in phasen %}
+      <tr>
+        <td data-titel="Von">{{ p.von|datum_de }}</td>
+        <td data-titel="Bis">{{ p.bis|datum_de }}</td>
+        <td class="rechts wert-soll" data-titel="Dosis"><strong>{{ p.soll_mg|mg }}</strong></td>
+        <td data-titel="Notiz">{{ p.notiz or '–' }}</td>
+        <td class="rechts">
+          <form class="inline-formular" method="post"
+                onsubmit="return confirm('Diesen Abschnitt wirklich löschen?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="aktion" value="loeschen">
+            <input type="hidden" name="id" value="{{ p.id }}">
+            <button class="knopf-still" title="Löschen">✕</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="leer-hinweis">
+    Noch kein Abschnitt angelegt. Fang unten mit deiner aktuellen Dosis an –
+    zum Beispiel „ab heute, zwei Wochen lang, 450 mg“.
+  </p>
+  {% endif %}
+</section>
+
+<section class="karte">
+  <h2>Abschnitt hinzufügen</h2>
+  <form class="formular" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="neu">
+    <label>Von
+      <input type="date" name="von" value="{{ heute }}" required>
+    </label>
+    <label>Bis <span class="feld-hinweis">einschließlich</span>
+      <input type="date" name="bis" required>
+    </label>
+    <label>Tagesdosis (mg)
+      <input name="soll_mg" inputmode="decimal" required placeholder="z. B. 450">
+    </label>
+    <label class="breit">Notiz <span class="feld-hinweis">optional</span>
+      <input name="notiz" placeholder="z. B. mit Dr. Müller am 12.10. besprochen">
+    </label>
+    <button type="submit">Abschnitt speichern</button>
+  </form>
+</section>
+
+{% endblock %}

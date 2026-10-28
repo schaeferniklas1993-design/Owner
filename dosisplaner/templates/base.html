@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titel %}Mein Weg{% endblock %}</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Mein Weg">
+  <meta name="theme-color" content="#1f9d76">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="icon" href="{{ url_for('static', filename='icon-192.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+{% if g.benutzer %}
+<header class="kopf">
+  <div class="kopf-innen">
+    <a class="marke" href="{{ url_for('start') }}">🌱 Mein Weg</a>
+    <nav>
+      <a href="{{ url_for('start') }}" class="{{ 'aktiv' if request.endpoint == 'start' }}">Heute</a>
+      <a href="{{ url_for('verlauf') }}" class="{{ 'aktiv' if request.endpoint == 'verlauf' }}">Verlauf</a>
+      <a href="{{ url_for('plan') }}" class="{{ 'aktiv' if request.endpoint == 'plan' }}">Mein Plan</a>
+      <a href="{{ url_for('erfolge') }}" class="{{ 'aktiv' if request.endpoint == 'erfolge' }}">Erfolge</a>
+      <a href="{{ url_for('hilfe') }}" class="{{ 'aktiv' if request.endpoint == 'hilfe' }}">Hilfe</a>
+    </nav>
+    <a class="abmelden" href="{{ url_for('abmelden') }}">Abmelden</a>
+  </div>
+</header>
+{% endif %}
+
+<main class="inhalt">
+  {% with meldungen = get_flashed_messages(with_categories=true) %}
+    {% for kategorie, text in meldungen %}
+      <div class="meldung meldung-{{ kategorie }}">{{ text }}</div>
+    {% endfor %}
+  {% endwith %}
+  {% block inhalt %}{% endblock %}
+</main>
+
+<footer class="fuss">
+  {% if g.benutzer %}Mein Weg · Version {{ app_version }}<br>{% endif %}
+  Diese Seite ersetzt keine ärztliche Begleitung.
+  Bei Krisen: <a href="tel:08001110111">Telefonseelsorge 0800 111 0 111</a> ·
+  Notfall: <a href="tel:112">112</a>
+</footer>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js"));
+  }
+</script>
+{% block skripte %}{% endblock %}
+</body>
+</html>
