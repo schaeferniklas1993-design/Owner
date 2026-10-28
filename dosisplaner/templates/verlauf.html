@@ -92,7 +92,8 @@
       <tr class="{{ 'zeile-heute' if t.heute }}">
         <td data-titel="Datum">{{ t.datum|datum_de }}{% if t.heute %} <span class="marke-still">heute</span>{% endif %}</td>
         <td class="rechts wert-soll" data-titel="Soll">{{ t.soll|mg }}</td>
-        <td class="rechts wert-ist" data-titel="Ist">{{ t.ist|mg }}</td>
+        <td class="rechts wert-ist" data-titel="Ist">{{ t.ist|mg }}{%
+          if t.einzeln %} <span class="karten-hinweis">({{ t.einzeln }}×)</span>{% endif %}</td>
         <td class="rechts" data-titel="Abweichung">
           {% if t.differenz is none %}–
           {% elif t.differenz == 0 %}<span class="plus">genau ✓</span>

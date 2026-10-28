@@ -76,16 +76,31 @@ CREATE TABLE IF NOT EXISTS plan_phasen (
 CREATE INDEX IF NOT EXISTS idx_phasen_von ON plan_phasen(von);
 
 -- Was du tatsächlich genommen hast – ein Eintrag pro Tag.
+-- ist_mg darf leer sein: an Tagen, an denen du einzelne Einnahmen erfasst
+-- hast (siehe Tabelle einnahmen), ergibt sich die Tagesdosis aus deren Summe.
 CREATE TABLE IF NOT EXISTS eintraege (
     id          INTEGER PRIMARY KEY,
     datum       TEXT NOT NULL UNIQUE,     -- ein Eintrag je Tag
-    ist_mg      REAL NOT NULL,
+    ist_mg      REAL,
     befinden    INTEGER,                  -- 1 bis 5, siehe BEFINDEN
     symptome    TEXT NOT NULL DEFAULT '', -- kommagetrennt
     notiz       TEXT NOT NULL DEFAULT '',
     erstellt_am TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
 );
 CREATE INDEX IF NOT EXISTS idx_eintraege_datum ON eintraege(datum);
+
+-- Einzelne Einnahmen über den Tag verteilt, z. B. 08:00 300 mg, 12:00 300 mg.
+-- Uhrzeit und Menge sind beide freiwillig: manchmal weiß man nur, dass man
+-- etwas genommen hat.
+CREATE TABLE IF NOT EXISTS einnahmen (
+    id          INTEGER PRIMARY KEY,
+    datum       TEXT NOT NULL,
+    uhrzeit     TEXT NOT NULL DEFAULT '',  -- HH:MM oder leer
+    mg          REAL,                      -- darf leer bleiben
+    notiz       TEXT NOT NULL DEFAULT '',
+    erstellt_am TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_einnahmen_datum ON einnahmen(datum);
 
 -- Substitution: was verordnet ist (Polamidon, Substitol).
 -- Festgelegt wird das in der Praxis – hier steht nur, was dort vereinbart
@@ -156,10 +171,43 @@ def verbinden() -> sqlite3.Connection:
     return conn
 
 
+def _migrationen(conn: sqlite3.Connection) -> None:
+    """Anpassungen an bestehenden Datenbanken. Darf mehrfach laufen."""
+    spalten = {z["name"]: z for z in conn.execute("PRAGMA table_info(eintraege)")}
+
+    # Früher war eine Tagesdosis Pflicht. Seit es Einzeleinnahmen gibt, ergibt
+    # sich die Tagesdosis an solchen Tagen aus deren Summe – der direkte Wert
+    # darf dann leer bleiben.
+    if spalten and spalten["ist_mg"]["notnull"]:
+        conn.execute("PRAGMA foreign_keys = OFF")
+        conn.execute("BEGIN")
+        conn.execute("""
+            CREATE TABLE eintraege_neu (
+                id          INTEGER PRIMARY KEY,
+                datum       TEXT NOT NULL UNIQUE,
+                ist_mg      REAL,
+                befinden    INTEGER,
+                symptome    TEXT NOT NULL DEFAULT '',
+                notiz       TEXT NOT NULL DEFAULT '',
+                erstellt_am TEXT NOT NULL DEFAULT (datetime('now', 'localtime'))
+            )""")
+        conn.execute("""
+            INSERT INTO eintraege_neu (id, datum, ist_mg, befinden, symptome,
+                                       notiz, erstellt_am)
+            SELECT id, datum, ist_mg, befinden, symptome, notiz, erstellt_am
+              FROM eintraege""")
+        conn.execute("DROP TABLE eintraege")
+        conn.execute("ALTER TABLE eintraege_neu RENAME TO eintraege")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_eintraege_datum ON eintraege(datum)")
+        conn.commit()
+        conn.execute("PRAGMA foreign_keys = ON")
+
+
 def init_db() -> None:
     conn = verbinden()
     try:
         conn.executescript(SCHEMA)
+        _migrationen(conn)
         if conn.execute("SELECT COUNT(*) AS n FROM benutzer").fetchone()["n"] == 0:
             for benutzername, anzeigename, passwort in STANDARD_BENUTZER:
                 conn.execute(
@@ -186,6 +234,51 @@ def soll_fuer(conn: sqlite3.Connection, datum: str) -> float | None:
         (datum,),
     ).fetchone()
     return zeile["soll_mg"] if zeile else None
+
+
+def einnahmen_je_tag(conn: sqlite3.Connection, von: str, bis: str) -> dict:
+    """Je Tag: Summe der Einzeleinnahmen, wie viele es sind und wie viele
+    davon ohne Mengenangabe. Tage ganz ohne Einzeleinnahmen fehlen."""
+    ergebnis = {}
+    for z in conn.execute(
+        """SELECT datum,
+                  SUM(CASE WHEN mg IS NOT NULL THEN mg END) AS summe,
+                  COUNT(*)                                  AS anzahl,
+                  SUM(CASE WHEN mg IS NULL THEN 1 ELSE 0 END) AS ohne_menge
+             FROM einnahmen WHERE datum BETWEEN ? AND ?
+            GROUP BY datum""",
+        (von, bis),
+    ):
+        ergebnis[z["datum"]] = {
+            "summe": z["summe"],
+            "anzahl": z["anzahl"],
+            "ohne_menge": z["ohne_menge"],
+        }
+    return ergebnis
+
+
+def ist_je_tag(conn: sqlite3.Connection, von: str, bis: str) -> dict:
+    """Die tatsächliche Tagesdosis je Tag.
+
+    Gibt es für einen Tag einzelne Einnahmen mit Menge, zählt deren Summe.
+    Sonst gilt der direkt eingetragene Tageswert.
+    """
+    werte = {
+        z["datum"]: z["ist_mg"] for z in conn.execute(
+            "SELECT datum, ist_mg FROM eintraege"
+            " WHERE datum BETWEEN ? AND ? AND ist_mg IS NOT NULL", (von, bis))
+    }
+    for datum, daten in einnahmen_je_tag(conn, von, bis).items():
+        if daten["summe"] is not None:
+            werte[datum] = daten["summe"]
+    return werte
+
+
+def tage_mit_eintrag(conn: sqlite3.Connection) -> list:
+    """Alle Tage, an denen irgendetwas festgehalten wurde – aufsteigend."""
+    return [z["datum"] for z in conn.execute(
+        "SELECT datum FROM eintraege UNION SELECT datum FROM einnahmen"
+        " ORDER BY datum")]
 
 
 def soll_subst_fuer(conn: sqlite3.Connection, mittel: str, datum: str) -> float | None:

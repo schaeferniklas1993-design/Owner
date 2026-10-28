@@ -25,11 +25,11 @@
   <div class="kachel">
     <div class="kachel-label">Ist heute</div>
     <div class="kachel-wert wert-ist">
-      {{ heute_eintrag.ist_mg|mg if heute_eintrag else "noch offen" }}
+      {{ ist_heute|mg if ist_heute is not none else "noch offen" }}
     </div>
     <div class="kachel-detail">
-      {% if heute_eintrag and soll_heute is not none %}
-        {% set d = heute_eintrag.ist_mg - soll_heute %}
+      {% if ist_heute is not none and soll_heute is not none %}
+        {% set d = ist_heute - soll_heute %}
         {% if d == 0 %}genau nach Plan ✓
         {% elif d > 0 %}<span class="minus">{{ d|mg }} über Plan</span>
         {% else %}<span class="plus">{{ (-d)|mg }} unter Plan</span>{% endif %}
@@ -79,17 +79,85 @@
 {% endif %}
 
 <section class="karte">
+  <div class="karten-kopf">
+    <h2>Einnahmen heute</h2>
+    {% if summe_heute and summe_heute.summe is not none %}
+    <span class="karten-hinweis">
+      zusammen <strong class="wert-ist">{{ summe_heute.summe|mg }}</strong>
+      {%- if summe_heute.ohne_menge %}
+        + {{ summe_heute.ohne_menge }}× ohne Mengenangabe
+      {%- endif %}
+    </span>
+    {% endif %}
+  </div>
+
+  {% if einnahmen_heute %}
+  <div class="einnahmen">
+    {% for e in einnahmen_heute %}
+    <div class="einnahme">
+      <span class="einnahme-zeit">{{ e.uhrzeit or "– : –" }}</span>
+      <span class="einnahme-menge">
+        {% if e.mg is not none %}{{ e.mg|mg }}{% else %}ohne Angabe{% endif %}
+      </span>
+      {% if e.notiz %}<span class="einnahme-notiz">{{ e.notiz }}</span>{% endif %}
+      <form class="inline-formular" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="aktion" value="einnahme_loeschen">
+        <input type="hidden" name="id" value="{{ e.id }}">
+        <button class="knopf-still" title="Löschen">✕</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="leer-hinweis">
+    Noch nichts eingetragen. Du kannst jede Einnahme einzeln festhalten –
+    etwa 08:00 Uhr 300 mg, 12:00 Uhr 300 mg. Die Tagesdosis ergibt sich dann
+    von allein. Beides ist freiwillig: ohne Uhrzeit oder ohne Menge geht auch.
+  </p>
+  {% endif %}
+
+  <form class="formular" method="post" style="margin-top:0.9rem">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="einnahme">
+    <label>Datum
+      <input type="date" name="datum" value="{{ heute }}" max="{{ heute }}" required>
+    </label>
+    <label>Uhrzeit <span class="feld-hinweis">freiwillig</span>
+      <input type="time" name="uhrzeit" value="{{ jetzt }}">
+    </label>
+    <label>Menge (mg) <span class="feld-hinweis">freiwillig</span>
+      <input name="mg" inputmode="decimal" placeholder="z. B. 300">
+    </label>
+    <label>Notiz <span class="feld-hinweis">freiwillig</span>
+      <input name="notiz" placeholder="z. B. mit dem Essen">
+    </label>
+    <button type="submit">Einnahme eintragen</button>
+  </form>
+</section>
+
+<section class="karte">
   <h2>{% if heute_eintrag %}Heutigen Eintrag ändern{% else %}Wie war heute?{% endif %}</h2>
   <form class="formular" method="post">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="aktion" value="tag">
     <label>Datum
       <input type="date" name="datum" value="{{ heute }}" required>
     </label>
-    <label>Tatsächlich genommen (mg)
-      <input name="ist_mg" inputmode="decimal" required
-             value="{{ heute_eintrag.ist_mg if heute_eintrag else (soll_heute if soll_heute is not none else '') }}"
-             placeholder="z. B. 450">
+    {% if summe_heute and summe_heute.summe is not none %}
+    <label>Tagesdosis
+      <input value="{{ summe_heute.summe|mg }} aus {{ summe_heute.anzahl }} Einnahmen"
+             disabled>
+      <span class="feld-hinweis">ergibt sich aus deinen Einnahmen oben</span>
     </label>
+    {% else %}
+    <label>Tatsächlich genommen (mg)
+      <input name="ist_mg" inputmode="decimal"
+             value="{{ heute_eintrag.ist_mg if heute_eintrag and heute_eintrag.ist_mg is not none else (soll_heute if soll_heute is not none else '') }}"
+             placeholder="z. B. 450">
+      <span class="feld-hinweis">oder trag die Einnahmen oben einzeln ein</span>
+    </label>
+    {% endif %}
 
     <div class="breit">
       <label style="margin-bottom:0.45rem">Wie ging es dir heute?</label>

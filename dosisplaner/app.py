@@ -17,9 +17,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 import database
 from database import (AUSLOESER, BEFINDEN, SUBSTANZEN, SUBSTITUTE, SYMPTOME,
-                      VERGABE, datum_de, mg, soll_fuer, soll_subst_fuer)
+                      VERGABE, datum_de, einnahmen_je_tag, ist_je_tag, mg,
+                      soll_fuer, soll_subst_fuer, tage_mit_eintrag)
 
-VERSION = "2026.10.28-2 · Substitution und Rückfälle"
+VERSION = "2026.10.28-3 · Einnahmen über den Tag"
 
 MAX_LOGIN_VERSUCHE = 8
 
@@ -34,6 +35,20 @@ ERMUTIGUNGEN = [
     "Rückschritte gehören dazu. Sie löschen nichts von dem, was du geschafft hast.",
     "Du bist nicht deine Dosis. Du bist der Mensch, der sie angeht.",
 ]
+
+
+def _zahl(text: str, feld: str) -> float | None:
+    """'487,5' -> 487.5. Leer ergibt None, Unsinn eine verständliche Meldung."""
+    text = (text or "").strip().replace(",", ".")
+    if not text:
+        return None
+    try:
+        wert = float(text)
+    except ValueError:
+        raise ValueError(f"„{text}“ ist keine Zahl – {feld} bitte wie 300 oder 487,5.")
+    if wert < 0:
+        raise ValueError(f"{feld} kann nicht unter 0 liegen.")
+    return wert
 
 
 def _secret_key() -> str:
@@ -189,13 +204,17 @@ def _verlauf(tage: int = 60) -> list:
             (start.isoformat(), heute.isoformat()),
         )
     }
+    # An Tagen mit einzelnen Einnahmen zählt deren Summe als Tagesdosis.
+    ist_werte = ist_je_tag(g.db, start.isoformat(), heute.isoformat())
+    einzeln = einnahmen_je_tag(g.db, start.isoformat(), heute.isoformat())
+
     reihe = []
     for versatz in range(tage):
         tag = start + datetime.timedelta(days=versatz)
         iso = tag.isoformat()
         eintrag = eintraege.get(iso)
         soll = soll_fuer(g.db, iso)
-        ist = eintrag["ist_mg"] if eintrag else None
+        ist = ist_werte.get(iso)
         reihe.append({
             "datum": iso,
             "kurz": f"{tag.day:02d}.{tag.month:02d}.",
@@ -205,6 +224,8 @@ def _verlauf(tage: int = 60) -> list:
             "befinden": eintrag["befinden"] if eintrag else None,
             "symptome": eintrag["symptome"] if eintrag else "",
             "notiz": eintrag["notiz"] if eintrag else "",
+            "einzeln": einzeln.get(iso, {}).get("anzahl", 0),
+            "ohne_menge": einzeln.get(iso, {}).get("ohne_menge", 0),
             "konsum": iso in konsum_tage,
             "heute": iso == heute.isoformat(),
         })
@@ -213,12 +234,14 @@ def _verlauf(tage: int = 60) -> list:
 
 def _kennzahlen() -> dict:
     """Startdosis, aktueller Stand und wie weit du schon gekommen bist."""
-    erster = g.db.execute(
-        "SELECT ist_mg, datum FROM eintraege ORDER BY datum LIMIT 1").fetchone()
-    letzter = g.db.execute(
-        "SELECT ist_mg, datum FROM eintraege ORDER BY datum DESC LIMIT 1").fetchone()
+    tage = tage_mit_eintrag(g.db)
+    werte = ist_je_tag(g.db, tage[0], tage[-1]) if tage else {}
+    mit_wert = sorted(werte)
     ziel = g.db.execute(
         "SELECT soll_mg FROM plan_phasen ORDER BY bis DESC LIMIT 1").fetchone()
+
+    erster = {"datum": mit_wert[0], "ist_mg": werte[mit_wert[0]]} if mit_wert else None
+    letzter = {"datum": mit_wert[-1], "ist_mg": werte[mit_wert[-1]]} if mit_wert else None
 
     start_mg = erster["ist_mg"] if erster else None
     aktuell_mg = letzter["ist_mg"] if letzter else None
@@ -238,15 +261,13 @@ def _kennzahlen() -> dict:
         "reduziert_mg": (start_mg - aktuell_mg)
                         if (start_mg is not None and aktuell_mg is not None) else None,
         "fortschritt": fortschritt,
-        "tage_dabei": g.db.execute(
-            "SELECT COUNT(*) AS n FROM eintraege").fetchone()["n"],
+        "tage_dabei": len(tage),
     }
 
 
 def _serie_ohne_luecke() -> int:
     """Wie viele Tage am Stück zuletzt eingetragen wurden."""
-    tage = [z["datum"] for z in g.db.execute(
-        "SELECT datum FROM eintraege ORDER BY datum DESC LIMIT 400")]
+    tage = list(reversed(tage_mit_eintrag(g.db)))[:400]
     if not tage:
         return 0
     heute = datetime.date.today()
@@ -272,24 +293,57 @@ def _serie_ohne_luecke() -> int:
 def start():
     if request.method == "POST":
         try:
-            datum = datetime.date.fromisoformat(request.form["datum"]).isoformat()
-            ist = float(request.form["ist_mg"].replace(",", "."))
-            if ist < 0:
-                raise ValueError("Die Dosis kann nicht unter 0 liegen.")
-            befinden = request.form.get("befinden") or None
-            symptome = ", ".join(request.form.getlist("symptome"))
-            # Ein Eintrag pro Tag: vorhandenen überschreiben statt doppeln.
-            g.db.execute(
-                """INSERT INTO eintraege (datum, ist_mg, befinden, symptome, notiz)
-                   VALUES (?, ?, ?, ?, ?)
-                   ON CONFLICT(datum) DO UPDATE SET
-                     ist_mg = excluded.ist_mg, befinden = excluded.befinden,
-                     symptome = excluded.symptome, notiz = excluded.notiz""",
-                (datum, ist, befinden, symptome,
-                 request.form.get("notiz", "").strip()),
-            )
-            g.db.commit()
-            flash("Eingetragen. Gut, dass du drangeblieben bist.", "ok")
+            aktion = request.form.get("aktion", "tag")
+
+            if aktion == "einnahme":
+                # Eine einzelne Einnahme über den Tag verteilt.
+                # Uhrzeit und Menge sind beide freiwillig.
+                datum = datetime.date.fromisoformat(request.form["datum"])
+                if datum > datetime.date.today():
+                    raise ValueError("Das Datum liegt in der Zukunft.")
+                uhrzeit = request.form.get("uhrzeit", "").strip()
+                if uhrzeit:
+                    uhrzeit = datetime.time.fromisoformat(uhrzeit).strftime("%H:%M")
+                menge = _zahl(request.form.get("mg", ""), "Die Menge")
+                g.db.execute(
+                    "INSERT INTO einnahmen (datum, uhrzeit, mg, notiz)"
+                    " VALUES (?, ?, ?, ?)",
+                    (datum.isoformat(), uhrzeit, menge,
+                     request.form.get("notiz", "").strip()),
+                )
+                g.db.commit()
+                flash("Einnahme eingetragen.", "ok")
+
+            elif aktion == "einnahme_loeschen":
+                g.db.execute("DELETE FROM einnahmen WHERE id = ?",
+                             (request.form["id"],))
+                g.db.commit()
+                flash("Einnahme gelöscht.", "ok")
+
+            else:
+                datum = datetime.date.fromisoformat(request.form["datum"]).isoformat()
+                # Gibt es für den Tag einzelne Einnahmen mit Menge, ergibt sich
+                # die Tagesdosis aus deren Summe – dann bleibt das Feld leer.
+                ist = _zahl(request.form.get("ist_mg", ""), "Die Dosis")
+                if ist is None and not g.db.execute(
+                        "SELECT 1 FROM einnahmen WHERE datum = ? AND mg IS NOT NULL"
+                        " LIMIT 1", (datum,)).fetchone():
+                    raise ValueError(
+                        "Trag entweder eine Tagesdosis ein oder einzelne Einnahmen.")
+                befinden = request.form.get("befinden") or None
+                symptome = ", ".join(request.form.getlist("symptome"))
+                # Ein Eintrag pro Tag: vorhandenen überschreiben statt doppeln.
+                g.db.execute(
+                    """INSERT INTO eintraege (datum, ist_mg, befinden, symptome, notiz)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(datum) DO UPDATE SET
+                         ist_mg = excluded.ist_mg, befinden = excluded.befinden,
+                         symptome = excluded.symptome, notiz = excluded.notiz""",
+                    (datum, ist, befinden, symptome,
+                     request.form.get("notiz", "").strip()),
+                )
+                g.db.commit()
+                flash("Eingetragen. Gut, dass du drangeblieben bist.", "ok")
         except (ValueError, KeyError, sqlite3.Error) as e:
             g.db.rollback()
             flash(f"Nicht gespeichert: {e}", "fehler")
@@ -305,10 +359,20 @@ def start():
     letzte = [t for t in verlauf if t["differenz"] is not None][-7:]
     abweichung = round(sum(t["differenz"] for t in letzte) / len(letzte), 1) if letzte else None
 
+    # Die einzelnen Einnahmen von heute – unbekannte Uhrzeit ans Ende.
+    einnahmen_heute = g.db.execute(
+        "SELECT * FROM einnahmen WHERE datum = ?"
+        " ORDER BY uhrzeit = '' , uhrzeit, id", (heute,)).fetchall()
+    summe_heute = einnahmen_je_tag(g.db, heute, heute).get(heute)
+
     return render_template(
         "start.html",
         heute=heute,
         heute_eintrag=heute_eintrag,
+        einnahmen_heute=einnahmen_heute,
+        summe_heute=summe_heute,
+        jetzt=datetime.datetime.now().strftime("%H:%M"),
+        ist_heute=ist_je_tag(g.db, heute, heute).get(heute),
         soll_heute=soll_fuer(g.db, heute),
         kennzahlen=kennzahlen,
         serie=_serie_ohne_luecke(),
@@ -405,15 +469,30 @@ def verlauf():
         puffer = io.StringIO()
         schreiber = csv.writer(puffer, delimiter=";")
         schreiber.writerow(["Datum", "Soll (mg)", "Ist (mg)", "Abweichung (mg)",
-                            "Befinden", "Symptome", "Notiz"])
+                            "Einnahmen über den Tag", "Befinden", "Symptome", "Notiz"])
+        # Die Verteilung über den Tag ist im Arztgespräch oft aufschlussreicher
+        # als die reine Tagessumme.
+        verteilung: dict = {}
+        for e in g.db.execute(
+            "SELECT datum, uhrzeit, mg FROM einnahmen WHERE datum BETWEEN ? AND ?"
+            " ORDER BY datum, uhrzeit = '', uhrzeit, id",
+            (reihe[0]["datum"], reihe[-1]["datum"]),
+        ):
+            teil = " ".join(filter(None, [
+                e["uhrzeit"],
+                mg(e["mg"]) if e["mg"] is not None else "(ohne Angabe)",
+            ]))
+            verteilung.setdefault(e["datum"], []).append(teil)
+
         for t in reihe:
-            if t["ist"] is None and t["soll"] is None:
+            if t["ist"] is None and t["soll"] is None and t["datum"] not in verteilung:
                 continue
             schreiber.writerow([
                 datum_de(t["datum"]),
                 str(t["soll"]).replace(".", ",") if t["soll"] is not None else "",
                 str(t["ist"]).replace(".", ",") if t["ist"] is not None else "",
                 str(t["differenz"]).replace(".", ",") if t["differenz"] is not None else "",
+                "; ".join(verteilung.get(t["datum"], [])),
                 BEFINDEN.get(t["befinden"], ("", ""))[0] if t["befinden"] else "",
                 t["symptome"], t["notiz"],
             ])
